@@ -5,3 +5,5 @@ node_modules/
 __pycache__/
 desktop.ini
 .superpowers/
+data/
+dist/

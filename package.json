@@ -1,0 +1,28 @@
+{
+  "name": "plataforma-aceana",
+  "version": "1.0.0",
+  "description": "Plataforma da A.C.E. que cobre do diagnóstico realizado ao projeto iniciado: catálogo, escopo, preço e margem prevista, aprovações, proposta, contrato e passagem para projetos, integrada ao Pipedrive, ao Monday e ao Clicksign.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "private": true,
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.14",
+    "fastify": "^5.12.7",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
