@@ -45,11 +45,11 @@ export const PARAMETER_SEEDS: { version: number; origin: string; values: Params 
   {
     version: 1,
     origin: 'Rentabilidade v5.0 / Parâmetros Únicos v0 (histórico)',
-    values: { ...common, hourCost: 24.2884, hoursPerConsultantDay: 2.915897436 },
+    values: { ...common, hourCost: 24.2884, hoursPerConsultantDay: 2.915897436, productiveCapacity: 0.7684 },
   },
   {
     version: 2,
     origin: 'Decisão de 31/10 (custo da hora) + capacidade de 30/10',
-    values: { ...common, hourCost: 23.45, hoursPerConsultantDay: 2.997948718 },
+    values: { ...common, hourCost: 23.45, hoursPerConsultantDay: 2.997948718, productiveCapacity: 0.6744488978 },
   },
 ];

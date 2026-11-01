@@ -6,19 +6,25 @@ import { BusinessError, ForbiddenError, GoneError, NotFoundError, UnauthorizedEr
 import { getActiveParams, publishParams } from '../modules/parameters.ts';
 import { getActiveCatalog } from '../modules/catalog.ts';
 import type { Params } from '../domain/params-schema.ts';
+import { createConnectors, type Connectors } from '../connectors/index.ts';
+import { proposalRoutes } from './routes/proposals.ts';
 
 export interface AppDeps {
   db: Db;
   now?: () => Date;
+  connectors?: Connectors;
   testRoutes?: boolean;
 }
 
-export type Route = (app: FastifyInstance, deps: Required<Pick<AppDeps, 'db' | 'now'>>) => void;
+export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors }
+export type Route = (app: FastifyInstance, ctx: RouteCtx) => void;
+
+const ROUTES: Route[] = [proposalRoutes];
 
 /** Monta a API sem abrir porta (testes usam app.inject). */
-export async function buildApp(deps: AppDeps, routes: Route[] = []): Promise<FastifyInstance> {
+export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
-  const ctx = { db: deps.db, now: deps.now ?? (() => new Date()) };
+  const ctx: RouteCtx = { db: deps.db, now: deps.now ?? (() => new Date()), connectors: deps.connectors ?? createConnectors() };
 
   app.decorateRequest('user', null);
   app.addHook('onRequest', async req => { req.user = await resolveUser(deps.db, req); });
@@ -57,6 +63,6 @@ export async function buildApp(deps: AppDeps, routes: Route[] = []): Promise<Fas
     app.get('/api/_test/business-error', async () => { throw new BusinessError('TESTE', 'Regra de teste'); });
   }
 
-  for (const r of routes) r(app, ctx);
+  for (const r of ROUTES) r(app, ctx);
   return app;
 }

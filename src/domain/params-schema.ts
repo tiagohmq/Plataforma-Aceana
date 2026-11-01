@@ -21,6 +21,7 @@ export const ParamsSchema = z.object({
   formExpiryHours: z.number().int().positive(),
   hoursPerConsultantDay: z.number().positive(),
   hoursPerManagerDay: z.number().positive(),
+  productiveCapacity: frac,
   contingency: mult,
   iss: mult,
   expectedFactor: mult,
