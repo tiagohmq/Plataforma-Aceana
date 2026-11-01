@@ -60,4 +60,4 @@ it('do diagnóstico ao projeto iniciado', async () => {
   ]));
   const failed = await db.query("select type, last_error from jobs where status <> 'done'");
   expect(failed.rows).toEqual([]);
-});
+}, 120000); // fluxo inteiro: mais lento que os testes unitários, sobretudo com a suíte em paralelo
