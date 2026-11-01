@@ -4,27 +4,13 @@ import type { Db } from '../src/db/client.ts';
 import { testApp } from './app-helper.ts';
 import { computeMargins } from '../src/domain/pricing.ts';
 import { getActiveParams } from '../src/modules/parameters.ts';
+import { as, versionBody, api } from './fixtures.ts';
 
 let app: FastifyInstance;
 let db: Db;
 beforeEach(async () => ({ app, db } = await testApp()));
 
-const as = (user: string) => ({ 'x-user-id': user });
-const importDeal = async (dealId = '2018', user = 'larissa') =>
-  app.inject({ method: 'POST', url: `/api/deals/${dealId}/import`, headers: as(user) });
-
-export const versionBody = (over: Record<string, unknown> = {}) => ({
-  scope: { solutionCode: 'SOL-017', stages: [{ name: 'Start', days: 10, consultants: 2 }, { name: 'Imersão', days: 50, consultants: 2 }] },
-  managers: 1,
-  externalCostsCents: 0,
-  pricing: { complexity: 3, size: 'ME', payment: 'BOLETO', channel: 'INBOUND', modality: 'PRESENCIAL', discount: 'NENHUM', outsourcing: 'NENHUMA' },
-  presentedCents: 1500000,
-  installments: 3,
-  ...over,
-});
-
-const newVersion = async (id: string, expected: number, body = versionBody(), user = 'larissa') =>
-  app.inject({ method: 'POST', url: `/api/proposals/${id}/versions`, headers: as(user), payload: { ...body, expectedCurrentNumber: expected } });
+const { importDeal, newVersion } = { importDeal: (d?: string, u?: string) => api(app).importDeal(d, u), newVersion: (id: string, e: number, b: object = versionBody(), u?: string) => api(app).newVersion(id, e, b, u) };
 
 describe('propostas', () => {
   it('importar duas vezes devolve a mesma proposta', async () => {

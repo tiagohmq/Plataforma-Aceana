@@ -8,6 +8,7 @@ import { getActiveCatalog } from '../modules/catalog.ts';
 import type { Params } from '../domain/params-schema.ts';
 import { createConnectors, type Connectors } from '../connectors/index.ts';
 import { proposalRoutes } from './routes/proposals.ts';
+import { approvalRoutes } from './routes/approvals.ts';
 
 export interface AppDeps {
   db: Db;
@@ -19,7 +20,7 @@ export interface AppDeps {
 export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors }
 export type Route = (app: FastifyInstance, ctx: RouteCtx) => void;
 
-const ROUTES: Route[] = [proposalRoutes];
+const ROUTES: Route[] = [proposalRoutes, approvalRoutes];
 
 /** Monta a API sem abrir porta (testes usam app.inject). */
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {

@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { openDb, type Db } from '../src/db/client.ts';
 import { migrate } from '../src/db/migrate.ts';
 import { recordAudit } from '../src/modules/audit.ts';
@@ -18,7 +20,8 @@ describe('banco', () => {
   it('migrate é idempotente', async () => {
     await migrate(db);
     const r = await db.query<{ n: number }>('select count(*)::int as n from schema_migrations');
-    expect(r.rows[0].n).toBe(1);
+    const files = readdirSync(fileURLToPath(new URL('../src/db/migrations/', import.meta.url))).filter(f => f.endsWith('.sql'));
+    expect(r.rows[0].n).toBe(files.length);
   });
 
   it('audit_events é imutável', async () => {
