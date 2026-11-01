@@ -21,10 +21,10 @@ it('do diagnóstico ao projeto iniciado', async () => {
   ok(await a.newVersion(p.id, 1), 201);
   ok(await a.approve(p.id, 2, 'larissa'), 201);
   // 3. Envia: link do cliente e deal em "Proposta apresentada"
-  ok(await a.send(p.id));
+  const sent = ok(await a.send(p.id)).json();
   await runDueJobs(db, connectors, tick());
   expect((await connectors.pipedrive.getDeal('2018')).stage).toBe('Proposta apresentada');
-  const pub = ok(await app.inject({ method: 'GET', url: `/api/public/proposals/${p.id}` })).json();
+  const pub = ok(await app.inject({ method: 'GET', url: sent.publicUrl })).json();
   expect(pub.valueCents).toBe(1500000);
   // 4. Positiva: registra valor vendido (v3) e aprova
   ok(await a.newVersion(p.id, 2, versionBody({ soldCents: 1500000 })), 201);

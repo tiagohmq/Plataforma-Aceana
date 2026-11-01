@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { newId, type Db } from '../db/client.ts';
 import type { User } from '../http/auth.ts';
@@ -60,14 +61,18 @@ export async function decide(db: Db, user: User, proposalId: string, raw: unknow
 }
 
 /** Envia a versão atual: exige aprovação válida, grava validade e enfileira a atualização do deal. */
-export async function sendProposal(db: Db, user: User, proposalId: string, now: Date): Promise<ProposalView & { validUntil: string }> {
+export async function sendProposal(db: Db, user: User, proposalId: string, now: Date): Promise<ProposalView & { validUntil: string; publicUrl: string }> {
   if (!can(user.role, 'proposal.edit')) throw new ForbiddenError();
   const p = await getProposalRow(db, proposalId);
   const v = await getVersionRow(db, proposalId);
   if (!(await isApproved(db, v.id, approvalNeeded(v.result)))) throw new BusinessError('APROVACAO_PENDENTE', 'A versão atual ainda não tem aprovação válida.');
   const params = await getParams(db, v.parameter_version_id);
   const validUntil = new Date(now.getTime() + params.proposalValidityDays * 86400000).toISOString().slice(0, 10);
+  const tok = await db.query<{ public_token: string | null }>('select public_token from proposals where id = $1', [proposalId]);
+  const token = tok.rows[0].public_token ?? randomBytes(24).toString('base64url');
+  const publicUrl = `/api/public/proposals/${token}`;
   await db.transaction(async tx => {
+    await tx.query('update proposals set public_token = $2 where id = $1 and public_token is null', [proposalId, token]);
     const already = await tx.query('select 1 from proposals where id = $1 and sent_version_id = $2', [proposalId, v.id]);
     if (!already.rows.length) {
       await tx.query("update proposals set status = 'ENVIADA', sent_version_id = $2, sent_at = $3, valid_until = $4 where id = $1", [proposalId, v.id, now.toISOString(), validUntil]);
@@ -76,18 +81,18 @@ export async function sendProposal(db: Db, user: User, proposalId: string, now: 
     await enqueueJob(tx, {
       type: 'pipedrive.updateDeal',
       idempotencyKey: `send:${v.id}`,
-      payload: { dealId: p.deal_id, fields: { stage: 'Proposta apresentada', valueCents: (v.result as VersionResult).valueCents, proposalLink: `/api/public/proposals/${proposalId}`, validUntil, approvalStatus: 'Aprovada', proposalId } },
+      payload: { dealId: p.deal_id, fields: { stage: 'Proposta apresentada', valueCents: (v.result as VersionResult).valueCents, proposalLink: publicUrl, validUntil, approvalStatus: 'Aprovada', proposalId } },
     });
   });
   const view = await getProposal(db, user, proposalId);
   const vu = await db.query<{ v: string }>("select to_char(valid_until, 'YYYY-MM-DD') as v from proposals where id = $1", [proposalId]);
-  return { ...view, validUntil: vu.rows[0].v };
+  return { ...view, validUntil: vu.rows[0].v, publicUrl };
 }
 
-/** Visão do cliente da versão enviada (link público). */
-export async function getClientProposal(db: Pick<Db, 'query'>, proposalId: string): Promise<ClientProposal> {
+/** Visão do cliente da versão enviada (link público com token aleatório). */
+export async function getClientProposal(db: Pick<Db, 'query'>, token: string): Promise<ClientProposal> {
   const r = await db.query<{ id: string; org_name: string; contact_name: string | null; sent_version_id: string | null; valid_until: string | null }>(
-    "select id, org_name, contact_name, sent_version_id, to_char(valid_until, 'YYYY-MM-DD') as valid_until from proposals where id = $1", [proposalId]);
+    "select id, org_name, contact_name, sent_version_id, to_char(valid_until, 'YYYY-MM-DD') as valid_until from proposals where public_token = $1", [token]);
   const p = r.rows[0];
   if (!p || !p.sent_version_id) throw new NotFoundError('Proposta não encontrada.');
   const v = await db.query<{ input: never; result: VersionResult; catalog_version_id: string }>(

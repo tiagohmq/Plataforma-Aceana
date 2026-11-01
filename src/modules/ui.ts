@@ -9,7 +9,7 @@ import { listProposals, type ProposalView } from './proposals.ts';
 type Q = Pick<Db, 'query'>;
 
 /** Estado de fluxo de uma proposta, no formato que as telas do v14 usam. Nada pessoal; margem só via currentVersion (já filtrada). */
-async function flowOf(db: Q, p: ProposalView, names: Map<string, string>) {
+async function flowOf(db: Q, user: User, p: ProposalView, names: Map<string, string>) {
   const v = p.currentVersion;
   const kind = approvalNeeded(v.result as { requiresException: boolean });
   const ap = await db.query<{ kind: string; decision: string; decided_by: string | null; requested_by: string | null; justification: string | null; created_at: string }>(
@@ -25,8 +25,8 @@ async function flowOf(db: Q, p: ProposalView, names: Map<string, string>) {
     "select sent_version_id, sent_at, to_char(valid_until, 'YYYY-MM-DD') as valid_until from proposals where id = $1", [p.id]);
   const forms = await db.query('select 1 from contract_forms where proposal_id = $1 limit 1', [p.id]);
   const data = await db.query<{ data: Record<string, string> }>('select data from contract_data where proposal_id = $1', [p.id]);
-  const contract = await db.query<{ id: string; status: string; envelope_id: string | null }>(
-    'select c.id, cs.status, cs.envelope_id from contracts c join contract_status cs on cs.contract_id = c.id where c.proposal_id = $1 order by c.created_at desc limit 1', [p.id]);
+  const contract = await db.query<{ id: string; status: string; envelope_id: string | null; proposal_version_id: string }>(
+    'select c.id, cs.status, cs.envelope_id, c.proposal_version_id from contracts c join contract_status cs on cs.contract_id = c.id where c.proposal_id = $1 order by c.created_at desc limit 1', [p.id]);
   const c = contract.rows[0];
   const signs = c ? await db.query<{ n: number }>("select count(*)::int as n from audit_events where entity_id = $1 and action = 'clicksign.sign'", [c.id]) : null;
   const links = await db.query<{ system: string }>('select system from external_links where deal_id = $1', [p.dealId]);
@@ -39,8 +39,8 @@ async function flowOf(db: Q, p: ProposalView, names: Map<string, string>) {
     validUntil: pr.rows[0]?.valid_until ?? null,
     accepted: !!v.input.soldCents,
     formSent: forms.rows.length > 0,
-    formData: data.rows[0]?.data ?? null,
-    contract: c ? { id: c.id, status: c.status, envelopeId: c.envelope_id } : null,
+    formData: can(user.role, 'personal.view') ? data.rows[0]?.data ?? null : null, // dados do contratante: só quem vê dados pessoais
+    contract: c ? { id: c.id, status: c.status, envelopeId: c.envelope_id, proposalVersionId: c.proposal_version_id } : null,
     signatures: signs?.rows[0].n ?? 0,
     projectCreated: sys.has('monday'),
     driveOk: sys.has('drive'),
@@ -59,7 +59,7 @@ export async function bootstrap(db: Q, user: User) {
   const users = (await db.query<{ id: string; name: string; role: string }>('select id, name, role from users where active order by id')).rows;
   const names = new Map(users.map(u => [u.id, u.name]));
   const proposals = await listProposals(db, user);
-  const withFlow = await Promise.all(proposals.map(async p => ({ ...p, ownerName: names.get(p.ownerId ?? '') ?? null, flow: await flowOf(db, p, names) })));
+  const withFlow = await Promise.all(proposals.map(async p => ({ ...p, ownerName: names.get(p.ownerId ?? '') ?? null, flow: await flowOf(db, user, p, names) })));
   const deals = new Map(proposals.map(p => [p.dealId, p.id]));
   const runs = (await db.query<{ id: string; job_id: string; connector: string; event: string; ok: boolean; error: string | null; created_at: string; attempts: number; deal_id: string | null; status: string }>(
     `select r.id, r.job_id, r.connector, r.event, r.ok, r.error, r.created_at, j.attempts, j.payload->>'dealId' as deal_id, j.status

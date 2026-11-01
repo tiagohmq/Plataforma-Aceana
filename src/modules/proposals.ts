@@ -167,6 +167,10 @@ export async function listProposals(db: Pick<Db, 'query'>, user: User): Promise<
 async function insertVersion(db: Pick<Db, 'query'>, proposalId: string, number: number, input: VersionInput, user: User): Promise<void> {
   const params = await getActiveParams(db);
   const catalog = await getActiveCatalog(db);
+  // Chaves de multiplicador inválidas são erro de entrada (400), não chegam ao motor.
+  for (const [table, key] of [['size', input.pricing.size], ['payment', input.pricing.payment], ['channel', input.pricing.channel], ['modality', input.pricing.modality], ['discount', input.pricing.discount], ['outsourcing', input.pricing.outsourcing], ['complexity', String(input.pricing.complexity)]] as const) {
+    if (!(key in params.values.multipliers[table])) throw Object.assign(new Error(`Valor inválido em ${table}: ${key}.`), { statusCode: 400 });
+  }
   if (input.installments !== undefined) {
     const max = computeVersion({ ...input, installments: 1 }, params.values).maxInstallments;
     if (input.installments > max) throw new BusinessError('PARCELAS_ACIMA_DO_MAXIMO', `O máximo para este escopo é ${max} parcelas.`);
@@ -184,7 +188,10 @@ export async function importDeal(db: Db, connectors: Connectors, user: User, dea
   if (existing.rows.length) return { created: false, proposal: await getProposal(db, user, existing.rows[0].id) };
   const deal = await connectors.pipedrive.getDeal(dealId);
   const catalog = await getActiveCatalog(db);
-  const id = `PROP_${now.toISOString().slice(0, 7)}_${slug(deal.org)}`;
+  // Mesma organização pode ter dois deals no mês (dois serviços): sufixo para não colidir.
+  const base = `PROP_${now.toISOString().slice(0, 7)}_${slug(deal.org)}`;
+  let id = base;
+  for (let n = 2; (await db.query('select 1 from proposals where id = $1', [id])).rows.length; n++) id = `${base}_${n}`;
   await db.transaction(async tx => {
     await tx.query('insert into proposals (id, deal_id, org_name, contact_name, owner_id) values ($1,$2,$3,$4,$5)', [id, dealId, deal.org, deal.contact, user.id]);
     await insertVersion(tx, id, 1, defaultInput(catalog, deal.services), user);

@@ -45,6 +45,12 @@ export function startWorker(db: Db, connectors: Connectors, intervalMs = 1000): 
 
 /** Reprocesso com um clique (só Administração, checado na rota). */
 export async function retryJob(db: Db, jobId: string): Promise<boolean> {
-  const r = await db.query("update jobs set status = 'pending', next_at = now(), attempts = 0, updated_at = now() where id = $1 and status in ('failed','pending') returning id", [jobId]);
+  const r = await db.query("update jobs set status = 'pending', next_at = now(), attempts = 0, updated_at = now() where id = $1 and status in ('failed','pending','running') returning id", [jobId]);
   return r.rows.length > 0;
+}
+
+/** Na partida: job que estava em execução quando o processo caiu volta para a fila (a idempotência evita duplicar). */
+export async function recoverRunningJobs(db: Db): Promise<number> {
+  const r = await db.query("update jobs set status = 'pending', next_at = now(), updated_at = now() where status = 'running' returning id");
+  return r.rows.length;
 }

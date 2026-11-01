@@ -15,5 +15,5 @@ export const approvalRoutes: Route = (app, { db, now }) => {
     sendProposal(db, requireUser(req), req.params.id, now()));
 
   // Link público do cliente: sem login, só a visão filtrada.
-  app.get<{ Params: { id: string } }>('/api/public/proposals/:id', async req => getClientProposal(db, req.params.id));
+  app.get<{ Params: { token: string } }>('/api/public/proposals/:token', async req => getClientProposal(db, req.params.token));
 };

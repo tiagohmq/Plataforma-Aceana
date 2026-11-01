@@ -39,6 +39,7 @@ const FormSchema = z.object({
 const PERSONAL = ['representanteCpf', 'representanteRg', 'orgaoEmissor', 'estadoCivil', 'enderecoRepresentante'] as const;
 
 const hashToken = (t: string) => createHash('sha256').update(t).digest('hex');
+const maskCpf = (cpf: string) => '***.***.***-' + cpf.replace(/\D/g, '').slice(-2);
 
 function requireKey(key: Buffer | undefined): Buffer {
   if (!key || key.length !== 32) throw new Error('CONTRACT_KEY não configurada');
@@ -86,8 +87,13 @@ export async function getForm(db: Pick<Db, 'query'>, token: string, now: Date) {
 export async function submitForm(db: Db, key: Buffer | undefined, token: string, raw: unknown, now: Date): Promise<void> {
   const f = await openForm(db, token, now);
   const data = FormSchema.parse(raw);
-  const personal = Object.fromEntries(PERSONAL.map(k => [k, data[k]]));
-  const pub = Object.fromEntries(Object.entries(data).filter(([k]) => !(PERSONAL as readonly string[]).includes(k)));
+  const personal: Record<string, string> = Object.fromEntries(PERSONAL.map(k => [k, data[k]]));
+  const pub: Record<string, string> = Object.fromEntries(Object.entries(data).filter(([k]) => !(PERSONAL as readonly string[]).includes(k)));
+  // Contratante pessoa física: o CPF também é dado pessoal (cifrado); fica só mascarado nos dados abertos.
+  if (isValidCpf(data.cnpjCpf)) {
+    personal.contratanteCpf = data.cnpjCpf;
+    pub.cnpjCpf = maskCpf(data.cnpjCpf);
+  }
   await db.transaction(async tx => {
     const used = await tx.query('update contract_forms set used_at = $2 where id = $1 and used_at is null returning id', [f.id, now.toISOString()]);
     if (!used.rows.length) throw new GoneError();
@@ -98,7 +104,7 @@ export async function submitForm(db: Db, key: Buffer | undefined, token: string,
   });
 }
 
-export async function generateContract(db: Db, connectors: Connectors, user: User, proposalId: string, raw: unknown, now: Date) {
+export async function generateContract(db: Db, connectors: Connectors, key: Buffer | undefined, user: User, proposalId: string, raw: unknown, now: Date) {
   if (!can(user.role, 'proposal.edit')) throw new ForbiddenError();
   const { exclusoes, reunioes } = z.object({ exclusoes: z.array(text), reunioes: z.number().int().min(1) }).parse(raw);
   const { p, v } = await soldApprovedVersion(db, proposalId);
@@ -107,6 +113,12 @@ export async function generateContract(db: Db, connectors: Connectors, user: Use
   const catalog = await getCatalog(db, v.catalog_version_id);
   const sol = catalog.solutions.find(s => s.code === input.scope.solutionCode);
   const cd = await db.query<{ data: Record<string, string> }>('select data from contract_data where proposal_id = $1', [proposalId]);
+  if (cd.rows[0]) {
+    // Contratante pessoa física: o documento do contrato precisa do CPF completo, que está cifrado.
+    const enc = await db.query<{ ciphertext: string }>('select ciphertext from contract_personal where proposal_id = $1', [proposalId]);
+    const personal = enc.rows[0] ? JSON.parse(decrypt(enc.rows[0].ciphertext, requireKey(key))) : {};
+    if (personal.contratanteCpf) cd.rows[0].data = { ...cd.rows[0].data, cnpjCpf: personal.contratanteCpf };
+  }
   const stages = [...input.scope.stages.map(s => ({ name: s.name, days: s.days })), ...input.scope.extra.map(e => ({ name: e.name, days: e.days }))];
   const rendered = renderContract({
     proposalId, solution: sol?.name ?? input.scope.solutionCode, stages, totalDays: result.days,
@@ -145,10 +157,20 @@ async function contractRow(db: Pick<Db, 'query'>, id: string) {
   return r.rows[0];
 }
 
+/** O contrato só vale para a versão atual da proposta, e essa versão precisa estar aprovada. */
+async function assertCurrent(db: Pick<Db, 'query'>, c: { proposal_id: string; proposal_version_id: string }) {
+  const current = await getVersionRow(db, c.proposal_id);
+  if (current.id !== c.proposal_version_id || !(await isApproved(db, current.id, approvalNeeded(current.result)))) {
+    throw new BusinessError('CONTRATO_DESATUALIZADO', 'A proposta mudou depois deste contrato. Gere um contrato novo a partir da versão aprovada.');
+  }
+}
+
 /** Aprovação própria do contrato: GN/DP dentro da regra; exceção só DP/Diretoria (F5.4). */
 export async function approveContract(db: Db, user: User, contractId: string, raw: unknown) {
   const { decision } = z.object({ decision: z.enum(['APROVADA', 'RECUSADA']) }).parse(raw);
   const c = await contractRow(db, contractId);
+  if (c.status !== 'AGUARDANDO_APROVACAO') throw new BusinessError('CONTRATO_JA_DECIDIDO', 'Este contrato já foi decidido.');
+  await assertCurrent(db, c);
   const kind = approvalNeeded(c.result);
   if (!canApprove(user, kind, c.created_by)) throw new ForbiddenError();
   await db.query("insert into approvals (id, target_type, target_id, kind, requested_by, decided_by, decision) values ($1,'CONTRACT',$2,$3,$4,$5,$6)",
@@ -165,6 +187,7 @@ export async function setEnvelope(db: Db, user: User, contractId: string, raw: u
   const { envelopeId } = z.object({ envelopeId: text }).parse(raw);
   const c = await contractRow(db, contractId);
   if (c.status !== 'APROVADO') throw new BusinessError('CONTRATO_NAO_APROVADO', 'O contrato precisa estar aprovado antes de ir ao Clicksign.');
+  await assertCurrent(db, c);
   await db.transaction(async tx => {
     await tx.query("update contract_status set envelope_id = $2, status = 'ENVIADO_CLICKSIGN', updated_at = now() where contract_id = $1", [contractId, envelopeId]);
     await tx.query("insert into external_links (deal_id, system, external_id) values ($1, 'clicksign', $2) on conflict (deal_id, system) do update set external_id = excluded.external_id", [c.deal_id, envelopeId]);

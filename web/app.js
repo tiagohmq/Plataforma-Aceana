@@ -239,7 +239,9 @@
   function optionalLeftOut(p) { return (SC[p.sol] || []).filter((m, i) => !mods(p)[i]).map(m => m.n); }
   A.cApprove = d => {
     const p = PR(d.c);
-    const contract = p._contract ? Promise.resolve(p._contract) : (() => {
+    // Só reaproveita contrato que ainda aguarda aprovação e é da versão atual; senão gera um novo.
+    const reuse = p._contract && p._contract.status === 'AGUARDANDO_APROVACAO' && p._contract.proposalVersionId === p._srv.id;
+    const contract = reuse ? Promise.resolve(p._contract) : (() => {
       const reun = prompt('Número de reuniões previstas (Anexo II):', '6');
       if (!reun) return Promise.reject(new Error('Contrato não gerado: informe o número de reuniões.'));
       const excl = prompt('Exclusões do escopo (Anexo II), separadas por ";":', optionalLeftOut(p).join('; '));

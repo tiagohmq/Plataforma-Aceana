@@ -88,8 +88,8 @@ describe('aprovações e envio', () => {
     const id = await ready();
     expect((await app.inject({ method: 'GET', url: `/api/public/proposals/${id}` })).statusCode).toBe(404);
     await a.approve(id, 2, 'larissa');
-    await a.send(id);
-    const r = await app.inject({ method: 'GET', url: `/api/public/proposals/${id}` });
+    const sent = (await a.send(id)).json();
+    const r = await app.inject({ method: 'GET', url: sent.publicUrl });
     expect(r.statusCode).toBe(200);
     expect(r.json().valueCents).toBe(1500000);
     expect(JSON.stringify(r.json())).not.toMatch(/contribution|margin|floor|[Cc]ost(?!s?Cents)|light|alert|param|hourCost/);

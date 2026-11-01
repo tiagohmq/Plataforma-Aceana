@@ -14,7 +14,7 @@ export const contractRoutes: Route = (app, { db, now, connectors, secrets }) => 
   });
 
   app.post<{ Params: { id: string } }>('/api/proposals/:id/contract', async (req, reply) =>
-    reply.code(201).send(await generateContract(db, connectors, requireUser(req), req.params.id, req.body, now())));
+    reply.code(201).send(await generateContract(db, connectors, secrets.contractKey, requireUser(req), req.params.id, req.body, now())));
 
   app.post<{ Params: { id: string } }>('/api/contracts/:id/approvals', async (req, reply) =>
     reply.code(201).send(await approveContract(db, requireUser(req), req.params.id, req.body)));
