@@ -97,7 +97,7 @@ Versão 2, ativa. Valores CONFIRMADOS salvo indicação:
 | `formExpiryHours` | 72 | HIPÓTESE |
 | `multipliers` | complexidade 1,00–1,20; nº consultores 1,00–1,20; capacidade (<65% 1,00; 65–75% 1,05; 75–85% 1,125; >85% 1,175); porte (ME 1,00; EPP 1,05; Médio 1,10; Grande 1,13); cartão 1,0325; captação (digital 1,05; outbound 1,025; inbound/MEJ 1,00); modalidade (presencial 1,00; híbrido 0,90; remoto 0,85); descontos (Black November 0,85; Dia do Consumidor 0,8725; indicação 0,85; inovação 0,85); terceirização (completa 1,35; Ray 1,125; Íon 1,075; Orbit 1,125; MEJ 1,115; ODD 1,00; Falaê 1,20; múltiplas 1,15) | Contexto §9.3 |
 | `contingency` / `iss` | 1,20 / 1,05 | Contexto §9.3 |
-| `dailyConsultant` / `dailyManager` | 2,92 h / 5,03 h × `hourCost` | Contexto §9.3 |
+| `hoursPerConsultantDay` / `hoursPerManagerDay` | v2: 2,997948718 / 5,033333333 (capacidade de 30/10, protótipo v13); v1: 2,915897436 / 5,033333333 (planilha Russa) | Planilha de capacidade |
 | `expectedFactor` / `maxFactor` | 1,1 / 1,2 | Contexto §9.3 |
 
 Nenhum desses valores aparece no código fora da semente; teste de busca garante.
@@ -118,8 +118,17 @@ Definições: V = valor (apresentado antes da venda; vendido depois), C = custos
   - V = 0: percentuais nulos, semáforo vermelho, `requiresException` verdadeiro (sem divisão por zero)
 - `computeCalculatedPrice(inputs, params)`:
   - CONFIRMADO (contexto §9.3): valor final = (C × contingency + preço ajustado × terceirização) × iss, com **iss uma vez só**; esperado = mínimo × expectedFactor; máximo = mínimo × maxFactor; diárias de consultor e gerente = horas × custo da hora.
-  - HIPÓTESE (o contexto não diz como o mínimo e o preço ajustado são compostos): mínimo = (dias × consultores × diária consultor + dias × GP × diária gerente); preço ajustado = mínimo × produto dos multiplicadores aplicáveis. Antes da implementação, conferir na planilha `PLAN_Precificacao_Caso_Russa_Estruturacao_Financeira.xlsx` e ajustar; a composição fica isolada numa função para trocar sem mexer no resto.
-  - Devolve mínimo, esperado, máximo, valor final e memória de cálculo (cada fator usado). PENDENTE: validação pelo DP contra Russa e RS Motoristas.
+  - CONFIRMADO na planilha `PLAN_Precificacao_Caso_Russa_Estruturacao_Financeira.xlsx` (aba Ferramenta, lida em 01/11):
+    - por etapa: mínimo_etapa = mult_complexidade(solução) × (d × n × diáriaConsultor + d × diáriaGerente) × mult_consultores(n) × mult_capacidade(capacidade)
+      - diáriaConsultor = hoursPerConsultantDay × hourCost; diáriaGerente = hoursPerManagerDay × hourCost (o GP entra sempre, 1 por etapa)
+      - mult_consultores: 1→1,00; 2→1,05; 3→1,10; 4→1,15; 5 ou mais→1,20 (**a planilha multiplica também pelo ISS nesse último caso: erro corrigido aqui**)
+      - mult_complexidade: complexidade 1→1,00; 2→1,05; 3→1,10; 4→1,15; 5→1,20
+    - mínimo = soma das etapas (**a planilha soma G11:G17 e deixa a última linha fora: corrigido, soma todas**)
+    - preço ajustado = mínimo × porte × pagamento × captação × modalidade × desconto
+    - valor final = (C × terceirização × contingency + preço ajustado × terceirização) × iss
+    - esperado/máximo da planilha (×1,1/×1,2, com o total "esperado" em ×1,05) são só informativos e não entram no valor final; o motor devolve mínimo × expectedFactor e × maxFactor
+  - Golden do preço calculado (caso Russa, com hourCost 24,28835131, hoursPerConsultantDay 2,915897436, hoursPerManagerDay 5,033333333): etapas (3 d, 2 c), (14 d, 2 c), (10 d, 2 c), complexidade 3, capacidade 76,84%, EPP, boleto, outbound, remoto, sem desconto, C = 360, sem terceirização → mínimo 9.258,30; ajustado 8.469,61; valor final 9.346,69.
+  - Devolve mínimo, ajustado, valor final, esperado, máximo e memória de cálculo (cada fator usado). PENDENTE: validação pelo DP das duas correções.
 - `maxInstallments(d)` = teto(d ÷ maxInstallmentsDivisor) + 1.
 - `splitInstallments(V, n)`: n parcelas iguais em centavos, sobra na última.
 - `addBusinessDays(start, n, holidays)`: pula sábado, domingo e feriados da tabela.
