@@ -10,6 +10,7 @@ Plataforma da A.C.E. que cobre do diagnóstico realizado ao projeto iniciado: ca
 - `docs/decisoes.md` — o que foi decidido e por quê.
 - `docs/superpowers/` — specs e planos (redesign visual e backend).
 - `docs/roteiro-demo.md` — roteiro da apresentação.
+- `web/` — o v14 ligado na API (`plataforma-aceana-v14.html` + adaptador `app.js`), servido pelo backend em `/`.
 - `src/` — backend (TypeScript): `domain` (regras puras), `modules` (banco + regras), `connectors` (mock e real), `jobs` (fila), `http` (API).
 
 Detalhes do protótipo em [prototipo/README.md](prototipo/README.md).

@@ -11,6 +11,7 @@ import { proposalRoutes } from './routes/proposals.ts';
 import { approvalRoutes } from './routes/approvals.ts';
 import { webhookRoutes } from './routes/webhooks.ts';
 import { contractRoutes } from './routes/contracts.ts';
+import { uiRoutes } from './routes/ui.ts';
 
 export interface Secrets { clicksignHmac?: string; contractKey?: Buffer }
 
@@ -19,13 +20,14 @@ export interface AppDeps {
   now?: () => Date;
   connectors?: Connectors;
   secrets?: Secrets;
+  demo?: boolean; // rotas /api/demo/* (DEMO_MODE=1)
   testRoutes?: boolean;
 }
 
-export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors; secrets: Secrets }
+export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors; secrets: Secrets; demo: boolean }
 export type Route = (app: FastifyInstance, ctx: RouteCtx) => void;
 
-const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes, contractRoutes];
+const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes, contractRoutes, uiRoutes];
 
 /** Segredos vêm do .env (nunca do código). */
 export function secretsFromEnv(env: Record<string, string | undefined> = process.env): Secrets {
@@ -40,7 +42,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   const ctx: RouteCtx = {
     db: deps.db, now: deps.now ?? (() => new Date()),
-    connectors: deps.connectors ?? createConnectors(), secrets: deps.secrets ?? secretsFromEnv(),
+    connectors: deps.connectors ?? createConnectors(), secrets: deps.secrets ?? secretsFromEnv(), demo: !!deps.demo,
   };
 
   // Guarda o corpo bruto: o HMAC do Clicksign é calculado sobre ele.

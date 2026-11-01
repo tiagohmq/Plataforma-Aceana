@@ -9,7 +9,7 @@ npm install
 npm start
 ```
 
-Abra `http://localhost:3333`. Para recomeçar do zero: pare o servidor e apague a pasta `data/`.
+Abra `http://localhost:3333`. O `.env` precisa de `DEMO_MODE=1` para os botões de simulação (assinaturas e falha de conector). Para recomeçar do zero: pare o servidor e apague a pasta `data/`.
 
 ## Passo a passo
 
@@ -23,9 +23,9 @@ Abra `http://localhost:3333`. Para recomeçar do zero: pare o servidor e apague 
 | 6 | Larissa | Positiva: registrar valor vendido e aprovar; gerar link do formulário | Link de uso único com prazo |
 | 7 | Cliente | Preencher o formulário (CPF/CNPJ fictícios válidos) | Segundo uso do link é recusado; CPF fica cifrado |
 | 8 | Larissa | Gerar contrato (exclusões e nº de reuniões), aprovar, informar o ID do envelope | Conferência proposta × contrato × Pipedrive; Quadro Resumo e Anexo II sem campo vazio |
-| 9 | Terminal | `node scripts/simular-assinatura.mjs env-demo-1 rita@solnascente.exemplo.com` | Webhook com HMAC: deal ganho, projeto no Monday (um só), pasta no Drive |
+| 9 | Larissa | Aba Assinatura → simular as 3 assinaturas (botão da tela; precisa de `DEMO_MODE=1`). Alternativa pelo terminal: `node scripts/simular-assinatura.mjs <envelope> <email do cliente>` | Retorno do Clicksign: na assinatura do cliente o deal fica ganho, o projeto é criado no Monday (um só) e a pasta no Drive |
 | 10 | Clara (GP) | Abrir o pacote de passagem | GP vê escopo e projeto, não vê margem nem CPF |
-| 11 | Admin | Integrações: job com falha → reprocessar | Reprocesso com um clique, sem duplicar |
+| 11 | Admin | Integrações: "simular falha" no Monday, fazer uma ação que use o Monday, depois reprocessar | Reprocesso com um clique, sem duplicar |
 
 ## Perguntas prováveis
 

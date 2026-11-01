@@ -15,7 +15,7 @@ const db = await openDb({ dataDir: process.env.DATA_DIR ?? './data' });
 await migrate(db);
 await seedAll(db);
 const connectors = createConnectors();
-const app = await buildApp({ db, connectors, secrets });
+const app = await buildApp({ db, connectors, secrets, demo: process.env.DEMO_MODE === "1" });
 startWorker(db, connectors);
 const port = Number(process.env.PORT ?? 3333);
 await app.listen({ port, host: '127.0.0.1' });

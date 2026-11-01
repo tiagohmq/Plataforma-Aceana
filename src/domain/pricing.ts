@@ -12,6 +12,10 @@ export interface MarginInput {
 }
 
 export interface Margins {
+  taxCents: number;
+  hoursCostCents: number;
+  salesTimeCents: number;
+  backofficeCents: number;
   cashCents: number;
   plannedHours: number;
   contributionCents: number;
@@ -21,16 +25,21 @@ export interface Margins {
   floorCents: number;
   light: Light;
   alerts: MarginAlert[];
+  belowMinContribution: boolean;
   requiresException: boolean;
 }
 
 /** Margem prevista, piso e semáforo (spec §7). O semáforo usa o % de contribuição. */
 export function computeMargins(i: MarginInput, p: Params): Margins {
   const V = i.valueCents;
-  const cashCents = V - mulCents(V, p.tax) - i.externalCostsCents;
+  const taxCents = mulCents(V, p.tax);
+  const cashCents = V - taxCents - i.externalCostsCents;
   const plannedHours = i.days * i.members * p.plannedHoursPerMemberDay;
-  const contributionCents = cashCents - Math.round(plannedHours * p.hourCost * 100);
-  const totalResultCents = contributionCents - mulCents(V, p.salesTime) - mulCents(V, p.backoffice);
+  const hoursCostCents = Math.round(plannedHours * p.hourCost * 100);
+  const contributionCents = cashCents - hoursCostCents;
+  const salesTimeCents = mulCents(V, p.salesTime);
+  const backofficeCents = mulCents(V, p.backoffice);
+  const totalResultCents = contributionCents - salesTimeCents - backofficeCents;
   const floorCents = Math.round(i.days * i.members * p.floorPerMemberDay * 100);
 
   const contributionPct = V > 0 ? contributionCents / V : null;
@@ -45,7 +54,8 @@ export function computeMargins(i: MarginInput, p: Params): Margins {
   if (i.externalCostsCents > mulCents(V, p.externalCostAlert)) alerts.push('EXTERNAL_COST');
   if (V < floorCents) alerts.push('BELOW_FLOOR');
 
-  const requiresException = V < floorCents || contributionPct === null || contributionPct < p.yellowMin;
+  const belowMinContribution = contributionPct === null || contributionPct < p.yellowMin;
+  const requiresException = V < floorCents || belowMinContribution;
 
-  return { cashCents, plannedHours, contributionCents, contributionPct, totalResultCents, totalResultPct, floorCents, light, alerts, requiresException };
+  return { taxCents, hoursCostCents, salesTimeCents, backofficeCents, cashCents, plannedHours, contributionCents, contributionPct, totalResultCents, totalResultPct, floorCents, light, alerts, belowMinContribution, requiresException };
 }
