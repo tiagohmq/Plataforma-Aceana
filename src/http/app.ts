@@ -10,6 +10,7 @@ import { createConnectors, type Connectors } from '../connectors/index.ts';
 import { proposalRoutes } from './routes/proposals.ts';
 import { approvalRoutes } from './routes/approvals.ts';
 import { webhookRoutes } from './routes/webhooks.ts';
+import { contractRoutes } from './routes/contracts.ts';
 
 export interface Secrets { clicksignHmac?: string; contractKey?: Buffer }
 
@@ -24,7 +25,7 @@ export interface AppDeps {
 export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors; secrets: Secrets }
 export type Route = (app: FastifyInstance, ctx: RouteCtx) => void;
 
-const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes];
+const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes, contractRoutes];
 
 /** Segredos vêm do .env (nunca do código). */
 export function secretsFromEnv(env: Record<string, string | undefined> = process.env): Secrets {
