@@ -9,23 +9,45 @@ import type { Params } from '../domain/params-schema.ts';
 import { createConnectors, type Connectors } from '../connectors/index.ts';
 import { proposalRoutes } from './routes/proposals.ts';
 import { approvalRoutes } from './routes/approvals.ts';
+import { webhookRoutes } from './routes/webhooks.ts';
+
+export interface Secrets { clicksignHmac?: string; contractKey?: Buffer }
 
 export interface AppDeps {
   db: Db;
   now?: () => Date;
   connectors?: Connectors;
+  secrets?: Secrets;
   testRoutes?: boolean;
 }
 
-export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors }
+export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors; secrets: Secrets }
 export type Route = (app: FastifyInstance, ctx: RouteCtx) => void;
 
-const ROUTES: Route[] = [proposalRoutes, approvalRoutes];
+const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes];
+
+/** Segredos vêm do .env (nunca do código). */
+export function secretsFromEnv(env: Record<string, string | undefined> = process.env): Secrets {
+  return {
+    clicksignHmac: env.CLICKSIGN_HMAC_SECRET || undefined,
+    contractKey: env.CONTRACT_KEY ? Buffer.from(env.CONTRACT_KEY, 'base64') : undefined,
+  };
+}
 
 /** Monta a API sem abrir porta (testes usam app.inject). */
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
-  const ctx: RouteCtx = { db: deps.db, now: deps.now ?? (() => new Date()), connectors: deps.connectors ?? createConnectors() };
+  const ctx: RouteCtx = {
+    db: deps.db, now: deps.now ?? (() => new Date()),
+    connectors: deps.connectors ?? createConnectors(), secrets: deps.secrets ?? secretsFromEnv(),
+  };
+
+  // Guarda o corpo bruto: o HMAC do Clicksign é calculado sobre ele.
+  app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body: Buffer, done) => {
+    (req as { rawBody?: Buffer }).rawBody = body;
+    if (!body.length) return done(null, undefined);
+    try { done(null, JSON.parse(body.toString('utf8'))); } catch { done(Object.assign(new Error('JSON inválido.'), { statusCode: 400 }), undefined); }
+  });
 
   app.decorateRequest('user', null);
   app.addHook('onRequest', async req => { req.user = await resolveUser(deps.db, req); });
