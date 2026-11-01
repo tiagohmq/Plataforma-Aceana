@@ -1,0 +1,357 @@
+[
+ {
+  "code": "SOL-001",
+  "name": "Start",
+  "front": "Complementares",
+  "complexity": 0,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-002",
+  "name": "Treinamentos",
+  "front": "Complementares",
+  "complexity": 1,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-003",
+  "name": "Acompanhamento",
+  "front": "Complementares",
+  "complexity": 1,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-004",
+  "name": "Análise de Concorrentes",
+  "front": "Estratégia e Mercado",
+  "complexity": 1,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-005",
+  "name": "Valuation",
+  "front": "Financeiro",
+  "complexity": 1,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-006",
+  "name": "BPO Financeiro",
+  "front": "Financeiro",
+  "complexity": 1,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-007",
+  "name": "Recrutamento e Seleção",
+  "front": "Pessoas",
+  "complexity": 1,
+  "stages": [],
+  "note": "Arquivo é cópia da Pesquisa de Mercado; criar escopo real"
+ },
+ {
+  "code": "SOL-008",
+  "name": "Imersão e Análise",
+  "front": "Complementares",
+  "complexity": 2,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-009",
+  "name": "Geolocalização",
+  "front": "Estratégia e Mercado",
+  "complexity": 2,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-010",
+  "name": "Planejamento Estratégico",
+  "front": "Estratégia e Mercado",
+  "complexity": 2,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-011",
+  "name": "Mapeamento de Processos",
+  "front": "Operações",
+  "complexity": 2,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 9
+   },
+   {
+    "name": "Imersão",
+    "days": 43
+   },
+   {
+    "name": "Ideação",
+    "days": 43
+   }
+  ],
+  "note": "Soma das atividades; aba Ferramenta diz 81. Padrão cobre mapeamento + otimização"
+ },
+ {
+  "code": "SOL-012",
+  "name": "Mapeamento da Jornada do Colaborador",
+  "front": "Pessoas",
+  "complexity": 2,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-013",
+  "name": "Plano de Negócios",
+  "front": "Estratégia e Mercado",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-014",
+  "name": "Estruturação de Business Inteligence",
+  "front": "Estratégia e Mercado",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-015",
+  "name": "Pesquisa de Mercado",
+  "front": "Estratégia e Mercado",
+  "complexity": 3,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 8
+   },
+   {
+    "name": "Imersão",
+    "days": 19
+   },
+   {
+    "name": "Ideação",
+    "days": 44
+   },
+   {
+    "name": "Acompanhamento",
+    "days": 1
+   }
+  ],
+  "note": ""
+ },
+ {
+  "code": "SOL-016",
+  "name": "Inovação em Customer Experience",
+  "front": "Experiência",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-017",
+  "name": "Estruturação Financeira",
+  "front": "Financeiro",
+  "complexity": 3,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 7
+   },
+   {
+    "name": "Imersão",
+    "days": 38
+   },
+   {
+    "name": "Ideação",
+    "days": 74
+   }
+  ],
+  "note": "Soma das atividades; aba Ferramenta diz 84"
+ },
+ {
+  "code": "SOL-018",
+  "name": "Análise de Custos",
+  "front": "Financeiro",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-019",
+  "name": "Precificação",
+  "front": "Financeiro",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-020",
+  "name": "Estruturação comercial",
+  "front": "Marketing e Vendas",
+  "complexity": 3,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 6
+   },
+   {
+    "name": "Imersão",
+    "days": 32
+   },
+   {
+    "name": "Ideação",
+    "days": 59
+   },
+   {
+    "name": "Acompanhamento",
+    "days": 6
+   }
+  ],
+  "note": ""
+ },
+ {
+  "code": "SOL-021",
+  "name": "Plano de Marketing",
+  "front": "Marketing e Vendas",
+  "complexity": 3,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 7
+   },
+   {
+    "name": "Imersão",
+    "days": 39
+   },
+   {
+    "name": "Ideação",
+    "days": 34
+   },
+   {
+    "name": "Acompanhamento",
+    "days": 22
+   }
+  ],
+  "note": ""
+ },
+ {
+  "code": "SOL-022",
+  "name": "Planejamento Comercial",
+  "front": "Marketing e Vendas",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-023",
+  "name": "Gestão de Estoque",
+  "front": "Operações",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-024",
+  "name": "Cronoanálise",
+  "front": "Operações",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-025",
+  "name": "Plano de Cargos e Carreira",
+  "front": "Pessoas",
+  "complexity": 3,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-026",
+  "name": "Estudo de Viabilidade Econômica",
+  "front": "Estratégia e Mercado",
+  "complexity": 4,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-027",
+  "name": "Otimização de Processos",
+  "front": "Operações",
+  "complexity": 4,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 9
+   },
+   {
+    "name": "Imersão",
+    "days": 43
+   },
+   {
+    "name": "Ideação",
+    "days": 43
+   }
+  ],
+  "note": "Mesmo padrão de Mapeamento de Processos"
+ },
+ {
+  "code": "SOL-028",
+  "name": "Implementação de software",
+  "front": "Operações",
+  "complexity": 4,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-029",
+  "name": "ACEleração",
+  "front": "Complementares",
+  "complexity": 5,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-030",
+  "name": "Banco de horas",
+  "front": "Complementares",
+  "complexity": 5,
+  "stages": [],
+  "note": ""
+ },
+ {
+  "code": "SOL-031",
+  "name": "Estruturação de CS",
+  "front": "Experiência",
+  "complexity": 5,
+  "stages": [
+   {
+    "name": "Start",
+    "days": 6
+   },
+   {
+    "name": "Imersão",
+    "days": 37
+   },
+   {
+    "name": "Ideação",
+    "days": 62
+   },
+   {
+    "name": "Acompanhamento",
+    "days": 6
+   }
+  ],
+  "note": ""
+ }
+]
