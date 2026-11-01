@@ -7,12 +7,14 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "start": "tsx --env-file=.env src/server.ts",
+    "dev": "tsx watch --env-file=.env src/server.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "private": true,
   "dependencies": {
     "@electric-sql/pglite": "^0.5.14",

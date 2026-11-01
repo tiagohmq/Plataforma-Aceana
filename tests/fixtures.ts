@@ -25,3 +25,12 @@ export const api = (app: FastifyInstance) => ({
   send: (id: string, user = 'larissa') =>
     app.inject({ method: 'POST', url: `/api/proposals/${id}/send`, headers: as(user) }),
 });
+
+/** Formulário do contrato com dados fictícios (CPF/CNPJ válidos só pelo dígito verificador). */
+export const FORM = {
+  razaoSocial: 'Mercearia Sol Nascente Ltda', cnpjCpf: '11.222.333/0001-81', endereco: 'Rua do Exemplo, 100, Recife/PE', cep: '50030-230',
+  representanteNome: 'Rita Alencar', nacionalidade: 'brasileira', profissao: 'empresária',
+  emailSignatario: 'rita@solnascente.exemplo.com', emailFinanceiro: 'financeiro@solnascente.exemplo.com',
+  representanteCpf: '529.982.247-25', representanteRg: '1234567', orgaoEmissor: 'SDS/PE', estadoCivil: 'casada', enderecoRepresentante: 'Rua Pessoal, 1, Recife/PE',
+};
+
