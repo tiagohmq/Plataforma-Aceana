@@ -340,19 +340,19 @@
     loadDx(p);
     const dx = DXCACHE[p.code];
     const form = `<div class="card"><h2>Transcrição da reunião de diagnóstico</h2>
-      <p class="small muted" style="margin:4px 0 12px">Cole a transcrição da reunião. Antes de ir para a IA, a plataforma remove CPF, RG, CNPJ, e-mails e telefones. A IA só sugere soluções do catálogo, sempre com o trecho de origem, e nunca define preço, desconto ou prazo.</p>
+      <p class="small muted" style="margin:4px 0 12px">Cole a transcrição da reunião. A plataforma remove CPF, RG, CNPJ, e-mails e telefones antes de analisar. A análise só sugere soluções do catálogo, sempre com o trecho de origem, e nunca define preço, desconto ou prazo. Quem decide é você.</p>
       <textarea id="dx-${esc(p.code)}" class="inp" rows="10" data-chg="dxDraft" data-c="${esc(p.code)}" placeholder="Consultor: Como funciona hoje?&#10;Cliente: ..." ${ed && !busy ? '' : 'disabled'} style="min-height:200px">${esc(DXDRAFT[p.code] || '')}</textarea>
-      <div class="row" style="margin-top:12px"><button class="btn y" data-a="dxAnalyze" data-c="${esc(p.code)}" ${ed && !busy ? '' : 'disabled'}>${busy ? 'Analisando a transcrição…' : (dx ? 'Analisar de novo' : 'Analisar com IA')}</button>${busy ? '<span class="small muted">Pode levar até um minuto.</span>' : ''}</div></div>`;
+      <div class="row" style="margin-top:12px"><button class="btn y" data-a="dxAnalyze" data-c="${esc(p.code)}" ${ed && !busy ? '' : 'disabled'}>${busy ? 'Analisando a transcrição…' : (dx ? 'Analisar de novo' : 'Analisar transcrição')}</button>${busy ? '<span class="small muted">Pode levar até um minuto.</span>' : ''}</div></div>`;
     let res = '';
     if (dx) {
-      res = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">O que a IA entendeu</h2><span class="chip info">${dx.itens.length} itens · ${dx.solucoes.length} soluções</span></div>
+      res = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">O que a análise encontrou</h2><span class="chip info">${dx.itens.length} itens · ${dx.solucoes.length} soluções</span></div>
         ${dx.resumo ? `<p style="margin:10px 0 4px">${esc(dx.resumo)}</p>` : ''}
         ${dx.itens.map(it => `<div class="mod"><div class="b"><div class="row"><span class="chip ${TIPO[it.tipo][1]}">${TIPO[it.tipo][0]}</span></div><h3>${esc(it.texto)}</h3><p class="quote">${esc(it.trecho)}</p></div></div>`).join('') || '<p class="muted" style="margin-top:10px">Nenhum item com trecho de origem.</p>'}</div>
         <div class="card"><h2>Soluções sugeridas do catálogo</h2><p class="small muted" style="margin:4px 0 12px">Escolha uma para montar o escopo em rascunho. Você revisa dias, equipe e preço depois.</p>
         ${dx.solucoes.map(s => `<div class="mod"><div class="b"><div class="row"><span class="chip">${esc(s.codigo)}</span>${p.sol === s.codigo ? '<span class="chip ok">No escopo</span>' : ''}</div><h3>${esc(s.nome)}</h3><p class="small">${esc(s.motivo)}</p><p class="quote">${esc(s.trecho)}</p></div>
           <button class="btn ${p.sol === s.codigo ? 'q' : 'p'}" data-a="dxUseSol" data-c="${esc(p.code)}" data-s="${esc(s.codigo)}" ${ed ? '' : 'disabled'}>${p.sol === s.codigo ? 'Remontar escopo' : 'Usar esta solução'}</button></div>`).join('') || '<p class="muted">Nenhuma solução do catálogo foi sugerida.</p>'}
         ${dx.descartados.length ? `<p class="small muted" style="margin-top:12px">Descartados pela trava (${dx.descartados.length}): ${dx.descartados.map(x => esc(x.texto) + ' — ' + esc(x.motivo)).join('; ')}</p>` : ''}
-        <p class="small muted" style="margin-top:8px">Modelo: ${esc(dx.model)} · ${fmt(dx.createdAt)}</p></div>`;
+        <p class="small muted" style="margin-top:8px">Análise: ${esc(dx.model)} · ${fmt(dx.createdAt)}</p></div>`;
     }
     return `<div class="cols"><div class="m stack">${form}${res}</div><div class="s">${pdSide(p)}${aiBox}</div></div>`;
   };

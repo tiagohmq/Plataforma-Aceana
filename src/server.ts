@@ -7,6 +7,7 @@ import { startWorker, recoverRunningJobs } from './jobs/worker.ts';
 import { PipedriveMock } from './connectors/pipedrive/mock.ts';
 import { rehydratePipedriveMock } from './connectors/pipedrive/rehydrate.ts';
 import { claudeDiagnosis } from './connectors/ai/claude.ts';
+import { keywordDiagnosis } from './connectors/ai/keywords.ts';
 
 const secrets = secretsFromEnv();
 if (!secrets.contractKey || secrets.contractKey.length !== 32) {
@@ -20,10 +21,10 @@ await seedAll(db);
 const connectors = createConnectors();
 await recoverRunningJobs(db);
 if (connectors.pipedrive instanceof PipedriveMock) await rehydratePipedriveMock(db, connectors.pipedrive);
-// IA só liga com a chave no .env (ANTHROPIC_API_KEY); sem ela, a análise responde "IA não configurada".
-const ai = process.env.ANTHROPIC_API_KEY ? claudeDiagnosis() : undefined;
+// Com ANTHROPIC_API_KEY no .env, a análise usa o Claude; sem ela, usa palavras-chave (mesma trava nos dois casos).
+const ai = process.env.ANTHROPIC_API_KEY ? claudeDiagnosis() : keywordDiagnosis();
 const app = await buildApp({ db, connectors, secrets, demo: process.env.DEMO_MODE === "1", ai });
-console.log(`Pipedrive: ${process.env.PIPEDRIVE_MODE === 'real' ? 'real (somente leitura)' : 'simulado'} · IA: ${ai ? 'ligada' : 'desligada'}`);
+console.log(`Pipedrive: ${process.env.PIPEDRIVE_MODE === 'real' ? 'real (somente leitura)' : 'simulado'} · análise da transcrição: ${process.env.ANTHROPIC_API_KEY ? 'Claude' : 'palavras-chave (sem IA)'}`);
 startWorker(db, connectors);
 const port = Number(process.env.PORT ?? 3333);
 await app.listen({ port, host: '127.0.0.1' });
