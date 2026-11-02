@@ -106,7 +106,8 @@ function slug(s: string): string {
 
 function defaultInput(catalog: Catalog, services: string[]): VersionInput {
   const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-  const sol = catalog.solutions.find(s => services.some(x => norm(x) === norm(s.name))) ?? catalog.solutions[0];
+  // Primeiro serviço do deal (na ordem do Pipedrive) que existe no catálogo.
+  const sol = services.map(x => catalog.solutions.find(s => norm(x) === norm(s.name))).find(Boolean) ?? catalog.solutions[0];
   return {
     scope: { solutionCode: sol.code, stages: sol.stages.map(st => ({ name: st.name, days: st.days, consultants: 2 })), extra: [] },
     managers: 1,

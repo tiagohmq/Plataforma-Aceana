@@ -17,6 +17,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@electric-sql/pglite": "^0.5.14",
     "fastify": "^5.12.7",
     "zod": "^4.6.7"

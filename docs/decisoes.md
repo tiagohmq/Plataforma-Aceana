@@ -23,3 +23,11 @@
 - **Reinício do servidor:** jobs que estavam em execução voltam para a fila; o Pipedrive simulado reaplica as gravações já feitas.
 - **Aprovação de preço dentro da regra:** GN e DP (matriz de perfis). A Diretoria aprova exceções. A spec §8.3 citava também a Diretoria para preço comum; ficou a matriz. PENDENTE confirmar.
 - **Faixas de capacidade produtiva:** limite com "menor ou igual" (≤ 65% → 1,00), como a planilha Russa; o contexto escreve "< 65%". PENDENTE confirmar com o DP.
+
+## 02/11/2026 — Pipedrive real e diagnóstico por transcrição
+- **Pipedrive real em modo só leitura** (decisão do Tiago): a plataforma lê os negócios em "Diagnóstico realizado" de todos os funis (Vendas Inbound, Vendas Outbound, Licitações), com organização, contato, valor e campos personalizados. Gravações (etapa, valor, ganho) ficam registradas e não são enviadas; `PIPEDRIVE_WRITE=1` liga quando for decidido.
+- **Etapas achadas pelo nome** ("Diagnóstico realizado"), não por ID fixo. Token só no `.env`, enviado no cabeçalho `x-api-token`.
+- **Serviço do deal → solução do catálogo:** primeiro serviço do Pipedrive (na ordem) que existe no catálogo. Só 3 dos 17 negócios têm o campo preenchido; nos outros, a análise da transcrição sugere a solução.
+- **Diagnóstico com IA (Claude Opus 5.5, decisão do Tiago):** a IA lista dores, objetivos e restrições com trecho literal da transcrição e sugere só soluções do catálogo. A trava do servidor descarta solução fora do catálogo, item sem trecho de origem e qualquer saída com valor, prazo, desconto ou cláusula (M10). CPF, RG, CNPJ, e-mail e telefone saem do texto antes do envio. Fallback do servidor ligado (`fallbacks: "default"`).
+- **LGPD:** a transcrição (já sem dados pessoais) vai para a Anthropic, que passa a ser operadora. PENDENTE: registrar no inventário de operadores e validar com o jurídico.
+- **A IA nunca define preço, desconto nem prazo:** dias vêm do catálogo e o preço do motor; o GN revisa e aprova.

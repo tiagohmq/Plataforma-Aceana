@@ -10,6 +10,8 @@ export interface Deal {
   value?: number; // em centavos
   status?: 'open' | 'won' | 'lost';
   wonAt?: string;
+  pipeline?: string;
+  details?: { preAudit?: string; urgency?: string; budget?: string; needsApproval?: string };
 }
 
 /** Campos que a plataforma grava no deal (decisão de 31/10: etapa, valor, link, validade, margem, semáforo, aprovação, assinatura). */

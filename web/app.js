@@ -94,6 +94,9 @@
   /* ---------- carga ---------- */
   async function boot() {
     const b = await API.get('/api/ui/bootstrap');
+    CAT = (b.catalog && b.catalog.solutions) || [];
+    CAT.forEach(c => ensureSC(c.code));
+    if (b.me && b.me.role === 'GN') await loadDeals(); // lista de negócios do Pipedrive: só quem monta proposta
     if (b.params) { RAW_PARAMS = b.params; P = paramsToP(b.params.values, b.params.version); }
     else { // perfil sem acesso à margem: não guarda parâmetros de outro usuário na tela
       RAW_PARAMS = null;
@@ -283,6 +286,94 @@
     const values = Object.assign({}, RAW_PARAMS.values, { productiveCapacity: S.capNew.cap });
     S.capNew = null;
     go(API.post('/api/params', values), 'Capacidade publicada como nova versão de parâmetros.');
+  };
+
+  /* ---------- Pipedrive real e diagnóstico por transcrição ---------- */
+  let CAT = []; // soluções do catálogo vigente (servidor), com etapas e dias
+  const DXCACHE = {}; // última análise por proposta: undefined = não buscada, null = nenhuma
+  const DXDRAFT = {}; // texto colado ainda não analisado
+  const normTxt = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+  // Soluções sem atividades padrão no v14 usam as etapas do catálogo do servidor (ou as quatro etapas, a preencher).
+  function ensureSC(code) {
+    if (!code || SC[code]) return;
+    const s = CAT.find(c => c.code === code);
+    const st = s && s.stages.length ? s.stages : [{ name: 'Start' }, { name: 'Imersão' }, { name: 'Ideação' }, { name: 'Acompanhamento' }];
+    SC[code] = st.map(x => ({ e: x.name, n: x.name, d: x.days || 0, ent: '—' }));
+  }
+  const solFromServices = services => {
+    const hit = CAT.find(c => (services || []).some(sv => normTxt(sv) === normTxt(c.name)));
+    return hit ? hit.code : '';
+  };
+
+  async function loadDeals() {
+    try {
+      const deals = await API.get('/api/pipedrive/deals');
+      DEALS.splice(0, DEALS.length, ...deals.map(d => ({
+        id: d.id, client: d.org, contact: d.contact, email: d.contactEmail || '', val: (d.value || 0) / 100,
+        sol: solFromServices(d.services), services: d.services || [], pipeline: d.pipeline || '', preAudit: (d.details && d.details.preAudit) || '',
+      })));
+    } catch (e) { toast('Pipedrive indisponível: ' + e.message); }
+  }
+
+  window.vNewModal = function () {
+    const open = DEALS.filter(d => !PROPS.some(p => String(p.deal) === String(d.id)));
+    const row = d => `<div class="mod"><div class="b"><h3>${esc(d.client)}</h3>
+      <p class="small muted">Deal #${esc(d.id)}${d.pipeline ? ' · ' + esc(d.pipeline) : ''} · ${esc(d.contact || 'sem contato')}${d.val ? ' · ' + BRL(d.val) : ''}</p>
+      <p class="small">${d.services && d.services.length ? 'Serviço: ' + esc(d.services.join(', ')) : '<span class="muted">Serviço ainda não informado no Pipedrive (a análise da transcrição sugere)</span>'}</p>
+      ${d.preAudit ? `<p class="quote">${esc(d.preAudit.slice(0, 220))}${d.preAudit.length > 220 ? '…' : ''}</p>` : ''}</div>
+      <button class="btn p" data-a="importDeal" data-d="${esc(d.id)}">Importar</button></div>`;
+    return `<div class="modal" data-a="newClose"><div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Nova proposta</h2><button class="btn q" data-a="newClose">Fechar</button></div>
+      <p class="small muted" style="margin:6px 0 14px">Negócios em "Diagnóstico realizado" no Pipedrive, ainda sem proposta (${open.length}). A plataforma só lê o Pipedrive: nada é alterado lá.</p>
+      ${open.map(row).join('') || '<p class="muted">Nenhum negócio novo em Diagnóstico realizado.</p>'}</div></div>`;
+  };
+
+  function loadDx(p) {
+    if (DXCACHE[p.code] !== undefined) return;
+    DXCACHE[p.code] = null;
+    API.get('/api/proposals/' + enc(p.code) + '/diagnosis').then(d => { DXCACHE[p.code] = d; render(); }).catch(() => {});
+  }
+  const TIPO = { DOR: ['Dor', 'bad'], OBJETIVO: ['Objetivo', 'ok'], RESTRICAO: ['Restrição', 'warn'] };
+
+  window.vDx = function (p) {
+    const ed = can('Criar e editar'), busy = S.dxBusy === p.code;
+    loadDx(p);
+    const dx = DXCACHE[p.code];
+    const form = `<div class="card"><h2>Transcrição da reunião de diagnóstico</h2>
+      <p class="small muted" style="margin:4px 0 12px">Cole a transcrição da reunião. Antes de ir para a IA, a plataforma remove CPF, RG, CNPJ, e-mails e telefones. A IA só sugere soluções do catálogo, sempre com o trecho de origem, e nunca define preço, desconto ou prazo.</p>
+      <textarea id="dx-${esc(p.code)}" class="inp" rows="10" data-chg="dxDraft" data-c="${esc(p.code)}" placeholder="Consultor: Como funciona hoje?&#10;Cliente: ..." ${ed && !busy ? '' : 'disabled'} style="min-height:200px">${esc(DXDRAFT[p.code] || '')}</textarea>
+      <div class="row" style="margin-top:12px"><button class="btn y" data-a="dxAnalyze" data-c="${esc(p.code)}" ${ed && !busy ? '' : 'disabled'}>${busy ? 'Analisando a transcrição…' : (dx ? 'Analisar de novo' : 'Analisar com IA')}</button>${busy ? '<span class="small muted">Pode levar até um minuto.</span>' : ''}</div></div>`;
+    let res = '';
+    if (dx) {
+      res = `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">O que a IA entendeu</h2><span class="chip info">${dx.itens.length} itens · ${dx.solucoes.length} soluções</span></div>
+        ${dx.resumo ? `<p style="margin:10px 0 4px">${esc(dx.resumo)}</p>` : ''}
+        ${dx.itens.map(it => `<div class="mod"><div class="b"><div class="row"><span class="chip ${TIPO[it.tipo][1]}">${TIPO[it.tipo][0]}</span></div><h3>${esc(it.texto)}</h3><p class="quote">${esc(it.trecho)}</p></div></div>`).join('') || '<p class="muted" style="margin-top:10px">Nenhum item com trecho de origem.</p>'}</div>
+        <div class="card"><h2>Soluções sugeridas do catálogo</h2><p class="small muted" style="margin:4px 0 12px">Escolha uma para montar o escopo em rascunho. Você revisa dias, equipe e preço depois.</p>
+        ${dx.solucoes.map(s => `<div class="mod"><div class="b"><div class="row"><span class="chip">${esc(s.codigo)}</span>${p.sol === s.codigo ? '<span class="chip ok">No escopo</span>' : ''}</div><h3>${esc(s.nome)}</h3><p class="small">${esc(s.motivo)}</p><p class="quote">${esc(s.trecho)}</p></div>
+          <button class="btn ${p.sol === s.codigo ? 'q' : 'p'}" data-a="dxUseSol" data-c="${esc(p.code)}" data-s="${esc(s.codigo)}" ${ed ? '' : 'disabled'}>${p.sol === s.codigo ? 'Remontar escopo' : 'Usar esta solução'}</button></div>`).join('') || '<p class="muted">Nenhuma solução do catálogo foi sugerida.</p>'}
+        ${dx.descartados.length ? `<p class="small muted" style="margin-top:12px">Descartados pela trava (${dx.descartados.length}): ${dx.descartados.map(x => esc(x.texto) + ' — ' + esc(x.motivo)).join('; ')}</p>` : ''}
+        <p class="small muted" style="margin-top:8px">Modelo: ${esc(dx.model)} · ${fmt(dx.createdAt)}</p></div>`;
+    }
+    return `<div class="cols"><div class="m stack">${form}${res}</div><div class="s">${pdSide(p)}${aiBox}</div></div>`;
+  };
+
+  A.dxDraft = (d, el) => { DXDRAFT[d.c] = el.value; A._skip = 1; };
+  A.dxAnalyze = d => {
+    const el = document.getElementById('dx-' + d.c), t = el ? el.value : (DXDRAFT[d.c] || '');
+    DXDRAFT[d.c] = t;
+    if (t.trim().length < 20) return toast('Cole a transcrição da reunião antes de analisar.');
+    S.dxBusy = d.c;
+    API.post('/api/proposals/' + enc(d.c) + '/diagnosis', { transcript: t })
+      .then(r => { DXCACHE[d.c] = r; S.dxBusy = null; toast('Diagnóstico estruturado. Confira os trechos e escolha a solução.'); render(); })
+      .catch(e => { S.dxBusy = null; toast(e.message); render(); });
+  };
+  A.dxUseSol = d => {
+    const p = PR(d.c);
+    if (p.sent) return toast('Proposta já enviada. Crie uma nova versão para mudar o escopo.');
+    ensureSC(d.s);
+    p.sol = d.s; p.mods = null; p.dOv = {}; p.custom = []; p.tab = 'esc';
+    const nome = (CAT.find(c => c.code === d.s) || {}).name || d.s;
+    go(pushVersion(p), 'Escopo montado com ' + nome + '. Revise os dias, a equipe e o preço.');
   };
 
   const origUser = A.user;

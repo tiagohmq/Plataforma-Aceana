@@ -73,7 +73,7 @@ export async function bootstrap(db: Q, user: User) {
     me: user,
     users,
     params: can(user.role, 'margin.view') ? await getActiveParams(db) : null,
-    catalog: { id: catalog.id, version: catalog.version },
+    catalog: { id: catalog.id, version: catalog.version, solutions: catalog.solutions },
     proposals: withFlow,
     runs,
     audit,
