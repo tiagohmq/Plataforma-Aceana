@@ -24,7 +24,7 @@ if (connectors.pipedrive instanceof PipedriveMock) await rehydratePipedriveMock(
 // Com ANTHROPIC_API_KEY no .env, a análise usa o Claude; sem ela, usa palavras-chave (mesma trava nos dois casos).
 const ai = process.env.ANTHROPIC_API_KEY ? claudeDiagnosis() : keywordDiagnosis();
 const app = await buildApp({ db, connectors, secrets, demo: process.env.DEMO_MODE === "1", ai });
-console.log(`Pipedrive: ${process.env.PIPEDRIVE_MODE === 'real' ? 'real (somente leitura)' : 'simulado'} · análise da transcrição: ${process.env.ANTHROPIC_API_KEY ? 'Claude' : 'palavras-chave (sem IA)'}`);
+console.log(`Pipedrive: ${process.env.PIPEDRIVE_MODE === 'real' ? (process.env.PIPEDRIVE_WRITE_APPROVED === '1' ? 'real (leitura + grava só valor aprovado, parcelas e validade)' : 'real (somente leitura)') : 'simulado'} · análise da transcrição: ${process.env.ANTHROPIC_API_KEY ? 'Claude' : 'palavras-chave (sem IA)'}`);
 startWorker(db, connectors);
 const port = Number(process.env.PORT ?? 3333);
 await app.listen({ port, host: '127.0.0.1' });
