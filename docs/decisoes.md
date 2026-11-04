@@ -39,3 +39,8 @@
 - **Ler pelo link do Google:** não, por enquanto. O link responde 401 sem credencial; exigiria conta de serviço do Google da A.C.E. Evolução futura.
 - **Proposta pronta (decisão do Tiago):** o assistente com o design system gera PDF ou Canva; o GN anexa à versão aprovada. PDF: a plataforma confere valor, parcelas e ausência de margem no texto; divergência exige confirmação do GN, registrada em seu nome. Canva: sempre confirmação do GN (não dá para ler o link). Só links https do Canva. Nova versão = anexo antigo deixa de valer. O cliente abre o PDF/Canva pelo link público.
 - **Dependências novas:** `exceljs` (ler .xlsx) e `unpdf` (texto do PDF). `npm audit` aponta 9 alertas moderados nas dependências delas; aceitável para a demo local, rever antes de produção.
+
+## 04/11 — Gravação restrita no Pipedrive (Caminho A)
+- A plataforma grava no negócio só três coisas: "Valor aprovado" e "Parcelas aprovadas" (na aprovação) e a validade em "Data de fechamento esperada" (no envio). Todas as outras gravações continuam desligadas.
+- Liga com `PIPEDRIVE_WRITE_APPROVED=1`. Os dois campos personalizados são criados por um admin do Pipedrive; sem eles, o job falha com mensagem clara em Integrações e pode ser reprocessado.
+- Trava: antes de gravar, a plataforma confere se o negócio ainda é da mesma organização da proposta; se não for, não grava nada.

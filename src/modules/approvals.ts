@@ -58,6 +58,13 @@ export async function decide(db: Db, user: User, proposalId: string, raw: unknow
     "insert into approvals (id, target_type, target_id, kind, requested_by, decided_by, decision, justification, catalog_version_id, parameter_version_id) values ($1,'PROPOSAL_VERSION',$2,$3,$4,$5,$6,$7,$8,$9)",
     [newId(), v.id, kind, requestedBy, user.id, decision, justification ?? null, v.catalog_version_id, v.parameter_version_id]);
   await recordAudit(db, { actorId: user.id, entity: 'proposals', entityId: proposalId, action: 'approval.decide', after: { version: v.number, kind, decision } });
+  if (decision === 'APROVADA') {
+    // Recado para o assistente de proposta: o valor aprovado vai para o negócio no Pipedrive.
+    const r = v.result as VersionResult;
+    const row = await getProposalRow(db, proposalId);
+    const deal = row.deal_id;
+    await enqueueJob(db, { type: 'pipedrive.writeApproved', idempotencyKey: `approved:${v.id}`, payload: { dealId: deal, valueCents: r.valueCents, installments: r.installments, installmentsCents: r.installmentsCents, expectedOrg: row.org_name } });
+  }
   return { kind, decision };
 }
 
@@ -79,6 +86,8 @@ export async function sendProposal(db: Db, user: User, proposalId: string, now: 
       await tx.query("update proposals set status = 'ENVIADA', sent_version_id = $2, sent_at = $3, valid_until = $4 where id = $1", [proposalId, v.id, now.toISOString(), validUntil]);
       await recordAudit(tx, { actorId: user.id, entity: 'proposals', entityId: proposalId, action: 'proposal.send', after: { version: v.number, validUntil } });
     }
+    const rr = v.result as VersionResult;
+    await enqueueJob(tx, { type: 'pipedrive.writeApproved', idempotencyKey: `validity:${v.id}`, payload: { dealId: p.deal_id, valueCents: rr.valueCents, installments: rr.installments, installmentsCents: rr.installmentsCents, validUntil, expectedOrg: p.org_name } });
     await enqueueJob(tx, {
       type: 'pipedrive.updateDeal',
       idempotencyKey: `send:${v.id}`,

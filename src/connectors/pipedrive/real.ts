@@ -1,4 +1,4 @@
-import type { Deal, DealUpdate, PipedriveConnector } from './interface.ts';
+import type { ApprovedTerms, Deal, DealUpdate, PipedriveConnector } from './interface.ts';
 import { NotFoundError } from '../../http/errors.ts';
 
 const API = 'https://api.pipedrive.com/v1';
@@ -16,7 +16,8 @@ type Raw = Record<string, unknown> & {
 
 export interface PipedriveRealOptions {
   token: string;
-  write?: boolean; // gravações no CRM; desligado por padrão (decisão de 02/11: só leitura)
+  write?: boolean; // gravações gerais no CRM; desligado por padrão (decisão de 02/11: só leitura)
+  writeApproved?: boolean; // só valor aprovado, parcelas aprovadas e validade (decisão de 04/11)
   fetch?: typeof fetch;
 }
 
@@ -27,6 +28,7 @@ export interface PipedriveRealOptions {
 export class PipedriveReal implements PipedriveConnector {
   private token: string;
   private write: boolean;
+  private writeApprovedOn: boolean;
   private http: typeof fetch;
   private cache: { at: number; fields: Field[]; stages: Map<number, string>; pipelines: Map<number, string> } | null = null;
   skippedWrites: { op: string; dealId: string; fields?: DealUpdate }[] = [];
@@ -35,6 +37,7 @@ export class PipedriveReal implements PipedriveConnector {
     if (!o.token) throw new Error('PIPEDRIVE_API_TOKEN não configurado');
     this.token = o.token;
     this.write = !!o.write;
+    this.writeApprovedOn = !!o.writeApproved;
     this.http = o.fetch ?? fetch;
   }
 
@@ -110,6 +113,33 @@ export class PipedriveReal implements PipedriveConnector {
     const ids = [...m.stages].filter(([, name]) => norm(name) === target).map(([id]) => id);
     const lists = await Promise.all(ids.map(id => this.get<Raw[]>('/deals', { stage_id: id, status: 'open', limit: 500 })));
     return Promise.all(lists.flatMap(l => l ?? []).map(r => this.map(r)));
+  }
+
+  /** Campos que a plataforma pode gravar (lista fechada). Os dois primeiros são criados por um admin do Pipedrive. */
+  static readonly APPROVED_FIELDS = { value: 'Valor aprovado', installments: 'Parcelas aprovadas' } as const;
+
+  async writeApproved(dealId: string, t: ApprovedTerms): Promise<void> {
+    if (!this.writeApprovedOn) { this.skippedWrites.push({ op: 'writeApproved', dealId }); return; }
+    if (!/^\d+$/.test(dealId)) throw new NotFoundError('Negócio não encontrado no Pipedrive.');
+    if (t.expectedOrg) {
+      const d = await this.getDeal(dealId);
+      if (norm(d.org) !== norm(t.expectedOrg)) throw new Error(`Negócio ${dealId} no Pipedrive é de outra organização (${d.org}); nada foi gravado.`);
+    }
+    const m = await this.meta();
+    const key = (name: string) => {
+      const f = m.fields.find(x => norm(x.name) === norm(name));
+      if (!f) throw new Error(`Campo "${name}" não existe no Pipedrive: peça a um admin para criar (Configurações → Campos de dados → Negócio).`);
+      return f.key;
+    };
+    const brl = (c: number) => 'R$ ' + (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const body: Record<string, unknown> = {
+      [key(PipedriveReal.APPROVED_FIELDS.value)]: t.valueCents / 100,
+      [key(PipedriveReal.APPROVED_FIELDS.installments)]: t.installments <= 1 ? `À vista: ${brl(t.valueCents)}` : `${t.installments}x de ${brl(t.installmentsCents[0])}`,
+    };
+    if (t.validUntil) body.expected_close_date = t.validUntil;
+    const r = await this.http(`${API}/deals/${dealId}`, { method: 'PUT', headers: { 'x-api-token': this.token, 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
+    const j = (await r.json()) as { success?: boolean; error?: string };
+    if (!r.ok || !j.success) throw new Error(`Pipedrive recusou a gravação (${r.status}): ${j.error ?? 'erro'}`);
   }
 
   async updateDeal(dealId: string, fields: DealUpdate): Promise<void> {

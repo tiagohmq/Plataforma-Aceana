@@ -50,6 +50,8 @@ async function clicksignEvent(db: Db, _c: Connectors, p: { name: string; envelop
 
 export const HANDLERS: Record<string, Handler> = {
   'pipedrive.updateDeal': async (_db, c, p: { dealId: string; fields: DealUpdate }) => c.pipedrive.updateDeal(p.dealId, p.fields),
+  'pipedrive.writeApproved': async (_db, c, p: { dealId: string; valueCents: number; installments: number; installmentsCents: number[]; validUntil?: string; expectedOrg?: string }) =>
+    c.pipedrive.writeApproved(p.dealId, { valueCents: p.valueCents, installments: p.installments, installmentsCents: p.installmentsCents, validUntil: p.validUntil, expectedOrg: p.expectedOrg }),
   'pipedrive.markWon': async (_db, c, p: { dealId: string; wonAt: string }) => c.pipedrive.markWon(p.dealId, p.wonAt),
   'monday.createProject': async (db, c, p: ProjectInput) => {
     if (await link(db, p.dealId, 'monday')) return; // um projeto por deal ganho

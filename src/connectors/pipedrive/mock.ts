@@ -1,4 +1,4 @@
-import type { Deal, DealUpdate, PipedriveConnector } from './interface.ts';
+import type { ApprovedTerms, Deal, DealUpdate, PipedriveConnector } from './interface.ts';
 import { NotFoundError } from '../../http/errors.ts';
 
 // Deals fictícios do protótipo v14, na etapa "Diagnóstico realizado".
@@ -30,6 +30,12 @@ export class PipedriveMock implements PipedriveConnector {
     const d = await this.getDeal(dealId);
     this.deals.set(dealId, { ...d, ...(fields.stage ? { stage: fields.stage } : {}), ...(fields.valueCents ? { value: fields.valueCents } : {}) });
     this.updates.push({ dealId, fields });
+  }
+  approvedWrites: ({ dealId: string } & ApprovedTerms)[] = [];
+  async writeApproved(dealId: string, terms: ApprovedTerms): Promise<void> {
+    this.maybeFail();
+    await this.getDeal(dealId);
+    this.approvedWrites.push({ dealId, ...terms });
   }
   async markWon(dealId: string, wonAt: string): Promise<void> {
     this.maybeFail();

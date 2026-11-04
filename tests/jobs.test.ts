@@ -83,7 +83,7 @@ describe('fila', () => {
     expect(await runDueJobs(d2, c, later(1))).toBe(1);
     expect((await c.pipedrive.getDeal('2018')).status).toBe('won');
     await d2.close();
-  });
+  }, 120000); // abre o banco em disco duas vezes: lento com a suíte em paralelo
 
   it('lista de jobs só para admin', async () => {
     expect((await app.inject({ method: 'GET', url: '/api/jobs', headers: as('larissa') })).statusCode).toBe(403);

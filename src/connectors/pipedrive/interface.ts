@@ -25,7 +25,17 @@ export interface DealUpdate {
   proposalId?: string;
 }
 
+/** O que foi aprovado na plataforma e vai para o negócio (decisão de 04/11: só estes campos são gravados). */
+export interface ApprovedTerms {
+  valueCents: number;
+  installments: number;
+  installmentsCents: number[];
+  expectedOrg?: string; // trava: só grava se o negócio ainda é desta organização
+  validUntil?: string; // vai na "Data de fechamento esperada" (dicionário de dados)
+}
+
 export interface PipedriveConnector {
+  writeApproved(dealId: string, terms: ApprovedTerms): Promise<void>;
   getDeal(dealId: string): Promise<Deal>;
   listDeals(stage?: string): Promise<Deal[]>;
   updateDeal(dealId: string, fields: DealUpdate): Promise<void>;

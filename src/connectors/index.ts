@@ -21,7 +21,7 @@ type Env = Record<string, string | undefined>;
 export function createConnectors(env: Env = process.env): Connectors {
   return {
     pipedrive: env.PIPEDRIVE_MODE === 'real'
-      ? new PipedriveReal({ token: env.PIPEDRIVE_API_TOKEN ?? '', write: env.PIPEDRIVE_WRITE === '1' })
+      ? new PipedriveReal({ token: env.PIPEDRIVE_API_TOKEN ?? '', write: env.PIPEDRIVE_WRITE === '1', writeApproved: env.PIPEDRIVE_WRITE_APPROVED === '1' })
       : new PipedriveMock(),
     monday: env.MONDAY_MODE === 'real' ? new MondayReal() : new MondayMock(),
     drive: env.DRIVE_MODE === 'real' ? new DriveReal() : new DriveMock(),
