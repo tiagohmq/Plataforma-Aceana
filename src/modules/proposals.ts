@@ -18,7 +18,8 @@ const cents = z.number().int();
 export const VersionInputSchema = z.object({
   scope: z.object({
     solutionCode: z.string().min(1),
-    stages: z.array(z.object({ name: z.string().min(1), days: z.number().int().min(0), consultants: z.number().int().min(1) })),
+    // group = etapa (ex.: "Start · Ambientação"); notes = critério de pronto (DoD). Vêm da planilha do assistente de escopo.
+    stages: z.array(z.object({ name: z.string().min(1).max(200), days: z.number().int().min(0), consultants: z.number().int().min(1), group: z.string().max(200).optional(), notes: z.string().max(2000).optional() })),
     extra: z.array(z.object({ name: z.string().min(1), days: z.number().int().min(0), risks: z.array(z.enum(RISKS)) })).default([]),
   }),
   managers: z.union([z.literal(0), z.literal(1)]),
@@ -31,6 +32,7 @@ export const VersionInputSchema = z.object({
   presentedCents: cents.positive().optional(),
   soldCents: cents.positive().optional(),
   installments: z.number().int().min(1).optional(),
+  source: z.enum(['planilha']).optional(), // de onde veio o escopo
 });
 export type VersionInput = z.infer<typeof VersionInputSchema>;
 

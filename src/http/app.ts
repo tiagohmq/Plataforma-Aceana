@@ -13,6 +13,7 @@ import { webhookRoutes } from './routes/webhooks.ts';
 import { contractRoutes } from './routes/contracts.ts';
 import { uiRoutes } from './routes/ui.ts';
 import { diagnosisRoutes } from './routes/diagnosis.ts';
+import { attachmentRoutes } from './routes/attachments.ts';
 import type { DiagnosisAI } from '../connectors/ai/interface.ts';
 
 export interface Secrets { clicksignHmac?: string; contractKey?: Buffer }
@@ -30,7 +31,7 @@ export interface AppDeps {
 export interface RouteCtx { db: Db; now: () => Date; connectors: Connectors; secrets: Secrets; demo: boolean; ai?: DiagnosisAI }
 export type Route = (app: FastifyInstance, ctx: RouteCtx) => void;
 
-const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes, contractRoutes, diagnosisRoutes, uiRoutes];
+const ROUTES: Route[] = [proposalRoutes, approvalRoutes, webhookRoutes, contractRoutes, diagnosisRoutes, attachmentRoutes, uiRoutes];
 
 /** Segredos vêm do .env (nunca do código). */
 export function secretsFromEnv(env: Record<string, string | undefined> = process.env): Secrets {

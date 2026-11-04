@@ -1,6 +1,7 @@
 import type { Route } from '../app.ts';
 import { requireUser, requireCap } from '../auth.ts';
 import { importDeal, createVersion, getProposal, getVersion, listProposals } from '../../modules/proposals.ts';
+import { importSpreadsheet } from '../../modules/spreadsheet-import.ts';
 
 export const proposalRoutes: Route = (app, { db, now, connectors }) => {
   // Negócios em "Diagnóstico realizado" (leitura direta: só consulta, nada é gravado no CRM).
@@ -13,6 +14,10 @@ export const proposalRoutes: Route = (app, { db, now, connectors }) => {
     const out = await importDeal(db, connectors, requireUser(req), req.params.dealId, now());
     return reply.code(out.created ? 201 : 200).send(out.proposal);
   });
+
+  // Escopo vindo da planilha do assistente (.xlsx em base64; limite de 15 MB).
+  app.post<{ Params: { id: string } }>('/api/proposals/:id/import-spreadsheet', { bodyLimit: 15 * 1024 * 1024 }, async (req, reply) =>
+    reply.code(201).send(await importSpreadsheet(db, requireUser(req), req.params.id, req.body)));
 
   app.get('/api/proposals', async req => listProposals(db, requireUser(req)));
 

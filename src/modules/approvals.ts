@@ -11,6 +11,7 @@ import { getCatalog } from './catalog.ts';
 import { getProposal, getProposalRow, getVersionRow, type ProposalView, type VersionResult } from './proposals.ts';
 import { recordAudit } from './audit.ts';
 import { enqueueJob } from '../jobs/queue.ts';
+import { latestAttachment } from './attachments.ts';
 
 const DecisionSchema = z.object({
   versionNumber: z.number().int().min(1),
@@ -90,7 +91,7 @@ export async function sendProposal(db: Db, user: User, proposalId: string, now: 
 }
 
 /** Visão do cliente da versão enviada (link público com token aleatório). */
-export async function getClientProposal(db: Pick<Db, 'query'>, token: string): Promise<ClientProposal> {
+export async function getClientProposal(db: Pick<Db, 'query'>, token: string): Promise<ClientProposal & { attachment: { kind: string; url: string | null; filename: string | null } | null }> {
   const r = await db.query<{ id: string; org_name: string; contact_name: string | null; sent_version_id: string | null; valid_until: string | null }>(
     "select id, org_name, contact_name, sent_version_id, to_char(valid_until, 'YYYY-MM-DD') as valid_until from proposals where public_token = $1", [token]);
   const p = r.rows[0];
@@ -101,8 +102,11 @@ export async function getClientProposal(db: Pick<Db, 'query'>, token: string): P
   const catalog = await getCatalog(db, row.catalog_version_id);
   const input = row.input as unknown as import('./proposals.ts').VersionInput;
   const sol = catalog.solutions.find(s => s.code === input.scope.solutionCode);
-  return toClientView({
+  const view = toClientView({
     proposalId: p.id, client: p.org_name, contact: p.contact_name, solutionName: sol?.name ?? input.scope.solutionCode,
     input, result: row.result, validUntil: p.valid_until,
   });
+  // Proposta pronta anexada (PDF ou Canva) da versão enviada. Só o necessário para abrir: sem conferências internas.
+  const att = await latestAttachment(db, p.sent_version_id);
+  return { ...view, attachment: att ? { kind: att.kind, url: att.kind === 'PDF' ? `/api/public/proposals/${token}/pdf` : att.url, filename: att.filename } : null };
 }

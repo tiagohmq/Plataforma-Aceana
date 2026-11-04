@@ -87,6 +87,12 @@
         driveOk: f.driveOk,
         status: statusOf(f),
       }));
+    if (inp.source === 'planilha') {
+      p._sc = inp.scope.stages.map(x => ({ e: x.group || 'Escopo', n: x.name, d: x.days, ent: x.notes || '—' }));
+      p.mods = p._sc.map(() => true); p.dOv = {};
+      p.cons = inp.scope.stages.reduce((m, x) => Math.max(m, x.consultants), 1);
+      SC[p.sol] = p._sc;
+    }
     p._srv = v; p._flow = f; p._contract = f.contract;
     return p;
   }
@@ -144,14 +150,17 @@
 
   /* ---------- telas → servidor ---------- */
   function toInput(p) {
+    if (p._sc) SC[p.sol] = p._sc; // escopo importado é desta proposta, não da solução
     const cat = CATALOG.find(c => c[0] === p.sol) || [];
-    const stages = sel(p).filter(m => !m.custom && m.d > 0).map(m => ({ name: m.n, days: m.d, consultants: p.cons }));
+    const stages = sel(p).filter(m => !m.custom && m.d > 0).map(m => Object.assign({ name: m.n, days: m.d, consultants: p.cons }, p._sc ? { group: m.e, ...(m.ent && m.ent !== '—' ? { notes: m.ent } : {}) } : {}));
     const extra = (p.custom || []).map(x => ({ name: x.n, days: x.d, risks: x.flags.map(i => RISK[i]).filter(Boolean) }));
     const input = {
       scope: { solutionCode: p.sol, stages, extra }, managers: 1,
       externalCostsCents: Math.round((p.custos || 0) * 100),
       pricing: { complexity: Math.min(5, Math.max(1, cat[3] || 1)), size: 'ME', payment: 'BOLETO', channel: 'INBOUND', modality: 'PRESENCIAL', discount: 'NENHUM', outsourcing: 'NENHUMA' },
     };
+    if (p._srv && p._srv.input.source) input.source = p._srv.input.source;
+    if (p._srv && p._srv.input.pricing) input.pricing = Object.assign({}, p._srv.input.pricing, { complexity: input.pricing.complexity });
     if (p.price) input.presentedCents = Math.round(p.price * 100);
     if (p.accepted && p.sold) input.soldCents = Math.round(p.sold * 100);
     const max = p._srv && p._srv.result.maxInstallments;
@@ -374,6 +383,77 @@
     p.sol = d.s; p.mods = null; p.dOv = {}; p.custom = []; p.tab = 'esc';
     const nome = (CAT.find(c => c.code === d.s) || {}).name || d.s;
     go(pushVersion(p), 'Escopo montado com ' + nome + '. Revise os dias, a equipe e o preço.');
+  };
+
+  /* ---------- Escopo da planilha do assistente e proposta pronta (PDF ou Canva) ---------- */
+  const SHEETINFO = {}; // último resultado de importação por proposta (avisos, preço da planilha)
+  const fileB64 = file => new Promise((ok, fail) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(',')[1] || '');
+    r.onerror = () => fail(new Error('Não consegui ler o arquivo.'));
+    r.readAsDataURL(file);
+  });
+
+  // Mantém o escopo importado da proposta aberta (SC é por solução no v14; a planilha é por proposta).
+  const origWs = vWs;
+  vWs = function (p) { if (p._sc) SC[p.sol] = p._sc; return origWs(p); };
+
+  function sheetCard(p) {
+    const ed = can('Criar e editar'), info = SHEETINFO[p.code], fromSheet = p._srv && p._srv.input.source === 'planilha';
+    const groups = fromSheet ? [...new Set(p._sc.map(x => x.e))].map(g => ({ g, acts: p._sc.filter(x => x.e === g) })) : [];
+    return `<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Escopo da planilha do assistente</h2>${fromSheet ? '<span class="chip ok">Importado da planilha</span>' : ''}</div>
+      <p class="small muted" style="margin:4px 0 12px">No Google Sheets: Arquivo → Fazer download → Microsoft Excel (.xlsx). A plataforma lê solução, etapas, atividades, dias, equipe, custos e multiplicadores. O preço é calculado aqui, não na planilha.</p>
+      <div class="row"><input type="file" accept=".xlsx" id="xlsx-${esc(p.code)}" ${ed && !p.sent ? '' : 'disabled'}><button class="btn y" data-a="sheetImport" data-c="${esc(p.code)}" ${ed && !p.sent ? '' : 'disabled'}>${S.sheetBusy === p.code ? 'Importando…' : 'Importar escopo'}</button></div>
+      ${p.sent ? '<p class="small muted" style="margin-top:8px">Proposta já enviada: crie uma nova versão para importar outro escopo.</p>' : ''}
+      ${info ? `<div class="stack" style="gap:6px;margin-top:12px">${info.sheetPriceCents ? `<p class="small">Preço que a planilha mostrava: ${BRL(info.sheetPriceCents / 100)} (só referência; não entra no cálculo).</p>` : ''}${info.warnings.map(w => `<div class="banner warn small">${esc(w)}</div>`).join('')}</div>` : ''}
+      ${groups.map(x => `<div style="margin-top:14px"><h3>${esc(x.g)} · ${x.acts.reduce((t, a) => t + a.d, 0)} dias</h3>${x.acts.map(a => `<div class="mod"><div class="b"><div class="row" style="justify-content:space-between"><b>${esc(a.n)}</b><span class="chip">${a.d} d</span></div>${a.ent && a.ent !== '—' ? `<p class="small muted">Pronto quando: ${esc(a.ent)}</p>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`;
+  }
+  const origEsc = vEsc;
+  vEsc = function (p) { return `<div class="stack" style="margin-bottom:20px">${sheetCard(p)}</div>` + origEsc(p); };
+
+  A.sheetImport = d => {
+    const p = PR(d.c), el = document.getElementById('xlsx-' + d.c), file = el && el.files && el.files[0];
+    if (!file) return toast('Escolha o arquivo .xlsx da planilha.');
+    S.sheetBusy = d.c;
+    fileB64(file)
+      .then(b64 => API.post('/api/proposals/' + enc(d.c) + '/import-spreadsheet', { fileBase64: b64, expectedCurrentNumber: p.ver }))
+      .then(r => { SHEETINFO[d.c] = { warnings: r.warnings, sheetPriceCents: r.sheetPriceCents }; delete DXCACHE[d.c]; S.sheetBusy = null; return boot(); })
+      .then(() => toast('Escopo importado da planilha. Confira os avisos, os dias e o preço.'))
+      .catch(e => { S.sheetBusy = null; toast(e.message); render(); });
+  };
+
+  function attachCard(p) {
+    const ed = can('Criar e editar'), att = p._flow && p._flow.attachment, approved = p.ap && p.ap.st === 'ok';
+    const ok = b => (b === null ? '<span class="chip">não lido</span>' : b ? '<span class="chip ok">confere</span>' : '<span class="chip bad">não confere</span>');
+    const cur = att ? `<div class="banner ${att.confirmedBy ? 'warn' : 'ok'}" style="margin-top:10px">Anexado: ${att.kind === 'PDF' ? esc(att.filename || 'PDF') : `<a href="${esc(att.url)}" target="_blank" rel="noopener">link do Canva</a>`} · ${fmt(att.createdAt)}${att.confirmedBy ? ` · conferido manualmente por ${esc(att.confirmedBy)}` : ''}</div>
+      <dl class="kv" style="margin-top:10px"><dt>Valor ${esc(att.checks.expected.value)}</dt><dd>${ok(att.checks.valueFound)}</dd><dt>${att.checks.expected.installments}x de ${esc(att.checks.expected.installment)}</dt><dd>${ok(att.checks.installmentsFound)}</dd><dt>Sem margem para o cliente</dt><dd>${att.checks.mentionsMargin === null ? '<span class="chip">não lido</span>' : att.checks.mentionsMargin ? '<span class="chip bad">menciona margem</span>' : '<span class="chip ok">ok</span>'}</dd></dl>` : '';
+    return `<div class="card"><h2>Proposta pronta (PDF ou Canva)</h2>
+      <p class="small muted" style="margin:4px 0 12px">A proposta montada pelo assistente com o design system. Ela fica presa a esta versão aprovada; se o preço ou o escopo mudar, é preciso anexar de novo. Dê ao assistente o valor e as parcelas aprovados aqui.</p>
+      ${approved ? `<div class="row"><input type="file" accept="application/pdf,.pdf" id="pdf-${esc(p.code)}" ${ed ? '' : 'disabled'}><button class="btn y" data-a="attachPdf" data-c="${esc(p.code)}" ${ed ? '' : 'disabled'}>Anexar PDF</button></div>
+      <div class="row" style="margin-top:10px"><input class="inp" style="flex:1;min-width:220px" id="canva-${esc(p.code)}" placeholder="https://www.canva.com/design/..." ${ed ? '' : 'disabled'}><button class="btn" data-a="attachLink" data-c="${esc(p.code)}" ${ed ? '' : 'disabled'}>Anexar link do Canva</button></div>`
+        : '<div class="banner info">Aprove o preço desta versão antes de anexar a proposta.</div>'}
+      ${cur}</div>`;
+  }
+  const origProp = vProp;
+  vProp = function (p) { return `<div class="stack" style="margin-bottom:20px">${attachCard(p)}</div>` + origProp(p); };
+
+  // Conferência pendente: mostra o motivo e pede confirmação explícita, que fica registrada no nome do GN.
+  function sendAttachment(code, payload) {
+    return API.post('/api/proposals/' + enc(code) + '/attachment', payload).catch(e => {
+      if (!/Confira antes de anexar/.test(e.message)) throw e;
+      if (!window.confirm(e.message + '\n\nConfirmar e anexar mesmo assim?')) throw new Error('Anexo cancelado.');
+      return API.post('/api/proposals/' + enc(code) + '/attachment', Object.assign({}, payload, { confirmed: true }));
+    });
+  }
+  A.attachPdf = d => {
+    const el = document.getElementById('pdf-' + d.c), file = el && el.files && el.files[0];
+    if (!file) return toast('Escolha o PDF da proposta.');
+    go(fileB64(file).then(b64 => sendAttachment(d.c, { kind: 'PDF', filename: file.name, fileBase64: b64 })), 'Proposta em PDF anexada a esta versão.');
+  };
+  A.attachLink = d => {
+    const el = document.getElementById('canva-' + d.c), url = el ? el.value.trim() : '';
+    if (!url) return toast('Cole o link do Canva.');
+    go(sendAttachment(d.c, { kind: 'LINK', url }), 'Link do Canva anexado a esta versão.');
   };
 
   const origUser = A.user;

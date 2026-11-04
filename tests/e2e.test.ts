@@ -8,7 +8,8 @@ import { api, as, versionBody, FORM } from './fixtures.ts';
 
 // Roteiro da demo (docs/roteiro-demo.md), ponta a ponta, com cliente fictício.
 it('do diagnóstico ao projeto iniciado', async () => {
-  let clock = new Date('2026-11-05T13:00:00Z');
+  // Nunca antes da hora real: os jobs da fila nascem com a hora do banco.
+  let clock = new Date(Math.max(Date.parse('2026-11-05T13:00:00Z'), Date.now()));
   const tick = () => (clock = new Date(clock.getTime() + 60000));
   const connectors = createConnectors({});
   const { app, db } = await testApp({ connectors, now: () => clock });

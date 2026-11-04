@@ -32,3 +32,10 @@
 - **LGPD:** a transcrição (já sem dados pessoais) vai para a Anthropic, que passa a ser operadora. PENDENTE: registrar no inventário de operadores e validar com o jurídico.
 - **A IA nunca define preço, desconto nem prazo:** dias vêm do catálogo e o preço do motor; o GN revisa e aprova.
 - **Sem chave da Anthropic (02/11):** a análise da transcrição roda por palavras-chave (`src/connectors/ai/keywords.ts`): frases do cliente com marcas de dor, objetivo ou restrição, e soluções cujo nome ou sinônimo aparece na conversa ou na pré-auditoria. Mesma trava da IA. Os sinônimos são HIPÓTESE do time. Com `ANTHROPIC_API_KEY` no `.env`, o Claude assume automaticamente.
+
+## 04/11/2026 — Escopo e proposta vindos dos assistentes do Claude.ai
+- **Escopo pela planilha (decisão do Tiago):** o assistente de escopo do Claude.ai continua escrevendo na planilha de precificação (Google Sheets). O GN baixa como `.xlsx` e importa na proposta: solução, etapas, atividades com dias e DoD, consultores, gerente, custos externos (TOTAL DOS CUSTOS) e multiplicadores (porte, pagamento, captação, modalidade, desconto, terceirização). Dores, objetivo e indicadores viram o diagnóstico.
+- **O preço da planilha não entra no cálculo:** aparece só como referência. Na planilha da Clínica Maluar (04/11) o "VALOR FINAL" saiu errado por células `#REF!` nos parâmetros; o importador avisa quando isso acontece.
+- **Ler pelo link do Google:** não, por enquanto. O link responde 401 sem credencial; exigiria conta de serviço do Google da A.C.E. Evolução futura.
+- **Proposta pronta (decisão do Tiago):** o assistente com o design system gera PDF ou Canva; o GN anexa à versão aprovada. PDF: a plataforma confere valor, parcelas e ausência de margem no texto; divergência exige confirmação do GN, registrada em seu nome. Canva: sempre confirmação do GN (não dá para ler o link). Só links https do Canva. Nova versão = anexo antigo deixa de valer. O cliente abre o PDF/Canva pelo link público.
+- **Dependências novas:** `exceljs` (ler .xlsx) e `unpdf` (texto do PDF). `npm audit` aponta 9 alertas moderados nas dependências delas; aceitável para a demo local, rever antes de produção.

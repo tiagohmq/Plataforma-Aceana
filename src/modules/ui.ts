@@ -5,6 +5,7 @@ import { approvalNeeded } from '../domain/approval-rules.ts';
 import { getActiveParams } from './parameters.ts';
 import { getActiveCatalog } from './catalog.ts';
 import { listProposals, type ProposalView } from './proposals.ts';
+import { latestAttachment } from './attachments.ts';
 
 type Q = Pick<Db, 'query'>;
 
@@ -42,6 +43,7 @@ async function flowOf(db: Q, user: User, p: ProposalView, names: Map<string, str
     formData: can(user.role, 'personal.view') ? data.rows[0]?.data ?? null : null, // dados do contratante: só quem vê dados pessoais
     contract: c ? { id: c.id, status: c.status, envelopeId: c.envelope_id, proposalVersionId: c.proposal_version_id } : null,
     signatures: signs?.rows[0].n ?? 0,
+    attachment: await latestAttachment(db, v.id), // só o anexo da versão atual vale
     projectCreated: sys.has('monday'),
     driveOk: sys.has('drive'),
   };

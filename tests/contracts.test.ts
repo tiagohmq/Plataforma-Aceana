@@ -20,7 +20,8 @@ beforeEach(async () => {
   a = api(app);
 });
 
-const later = (min: number) => new Date(clock.getTime() + min * 60000);
+// Os jobs nascem com a hora real do banco: a fila precisa rodar depois dela, mesmo com o relógio do teste no passado.
+const later = (min: number) => new Date(Math.max(clock.getTime(), Date.now()) + min * 60000);
 
 /** Proposta enviada, vendida (v3 aprovada) e com link do formulário. */
 async function soldWithForm(): Promise<{ id: string; token: string }> {
@@ -92,7 +93,7 @@ describe('contrato', () => {
   it('gera contrato sem campo vazio e conferido com o deal', async () => {
     const id = await filled();
     const r = await generate(id);
-    expect(r.statusCode).toBe(201);
+    expect(r.statusCode, r.body).toBe(201);
     const c = r.json();
     expect(c.content.quadroResumo.clausula22).toBe(id);
     expect(c.content.quadroResumo.valorTotal).toBe('R$ 15.000,00');
